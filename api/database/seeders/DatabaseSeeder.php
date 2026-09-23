@@ -1,0 +1,58 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Enums\UserRole;
+use App\Models\Brand;
+use App\Models\ProductDeliveryOption;
+use App\Models\ProductDesignMode;
+use App\Models\ProductPricingTier;
+use App\Models\ProductType;
+use App\Models\Testimonial;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+
+class DatabaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        User::factory()->create([
+            'name' => 'Admin',
+            'email' => 'admin@guruganeshgraphics.com',
+            'password' => Hash::make('change-me-immediately'),
+            'role' => UserRole::Admin,
+        ]);
+
+        ProductDesignMode::factory()->createMany([
+            ['name' => 'Upload Your Own Design', 'slug' => 'upload-your-own'],
+            ['name' => 'Use a Template', 'slug' => 'use-a-template'],
+            ['name' => 'Request Custom Design', 'slug' => 'request-custom-design'],
+        ]);
+
+        ProductDeliveryOption::factory()->createMany([
+            ['name' => 'Standard Delivery', 'slug' => 'standard-delivery', 'estimated_days' => 5],
+            ['name' => 'Express Delivery', 'slug' => 'express-delivery', 'estimated_days' => 2],
+        ]);
+
+        ProductType::factory()->createMany([
+            ['name' => 'Digital Print', 'slug' => 'digital-print'],
+            ['name' => 'Offset Print', 'slug' => 'offset-print'],
+        ]);
+
+        ProductPricingTier::factory()->createMany([
+            ['name' => 'Standard', 'slug' => 'standard', 'price_multiplier' => 1.00],
+            ['name' => 'Premium', 'slug' => 'premium', 'price_multiplier' => 1.35],
+        ]);
+
+        // Categories, subcategories and products — the full storefront
+        // catalog the mega menu, homepage tiles and /products index are
+        // built around. Kept in its own seeder since it's the bulk of the
+        // data; must run after the lookup tables above, since it assigns
+        // products to their ids.
+        $this->call(CatalogSeeder::class);
+
+        Brand::factory()->count(3)->create();
+        Testimonial::factory()->count(5)->create();
+    }
+}
