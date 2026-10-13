@@ -23,7 +23,14 @@ Also ask the host how much memory a build process may use. Building Next.js can 
 
 ## Step 1. Put the code on GitHub
 
-Your folder is already linked to `https://github.com/anupdgavakar/GuruGanesh.git`. Open PowerShell in `F:\GuruGanesh`:
+Your repository is `https://github.com/anupdgavakar/guruganeshgraphics.git`. Open PowerShell in `F:\GuruGanesh` and point the folder at it (once):
+
+```powershell
+git remote set-url origin https://github.com/anupdgavakar/guruganeshgraphics.git
+git remote -v
+```
+
+Then check what will be uploaded:
 
 ```powershell
 git status
@@ -45,9 +52,9 @@ Make the GitHub repository **Private** (GitHub, then Settings, then Danger Zone,
 
 Pick one:
 
-**A. cPanel "Git Version Control"** (easiest). Click Create, tick "Clone a Repository", paste `https://github.com/anupdgavakar/GuruGanesh.git`, and set the path to `/home/CPANELUSER/guruganesh`. For a private repository, cPanel shows a public key to add to GitHub (repository Settings, then Deploy keys), and you then use the `git@github.com:anupdgavakar/GuruGanesh.git` address.
+**A. cPanel "Git Version Control"** (easiest). Click Create, tick "Clone a Repository", paste `https://github.com/anupdgavakar/guruganeshgraphics.git`, and set the path to `/home/CPANELUSER/guruganesh`. For a private repository, cPanel shows a public key to add to GitHub (repository Settings, then Deploy keys), and you then use the `git@github.com:anupdgavakar/guruganeshgraphics.git` address.
 
-**B. Terminal / SSH**: `cd ~ && git clone https://github.com/anupdgavakar/GuruGanesh.git guruganesh` (a private repository asks for a GitHub personal access token as the password).
+**B. Terminal / SSH**: `cd ~ && git clone https://github.com/anupdgavakar/guruganeshgraphics.git guruganesh` (a private repository asks for a GitHub personal access token as the password).
 
 **C. Upload a zip** from your PC (without `node_modules`, `vendor`, `.next`) with cPanel File Manager and extract it to `/home/CPANELUSER/guruganesh`.
 

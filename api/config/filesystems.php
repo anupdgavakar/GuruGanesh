@@ -40,7 +40,10 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            // Normally storage/app/public, reached through the public/storage
+            // link (php artisan storage:link). Hosts that do not follow
+            // symlinks set PUBLIC_DISK_ROOT to the real public/storage folder.
+            'root' => env('PUBLIC_DISK_ROOT', storage_path('app/public')),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
