@@ -33,7 +33,10 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Off: Laravel's built-in "serve" route would claim /storage/*
+            // and answer 403. The public pictures route in routes/web.php
+            // owns that URL instead.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
