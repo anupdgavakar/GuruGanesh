@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { adminApiFetch, AdminApiError } from "./client";
 import type { AdminUser } from "./types";
 
@@ -27,11 +28,12 @@ export async function logoutRequest() {
  * most endpoints this one returns the user object directly, not wrapped in
  * `{status, data}` — see AuthController::user().
  */
-export async function getCurrentUser(): Promise<AdminUser | null> {
+// `cache` so the layout and the page it wraps share one lookup per request.
+export const getCurrentUser = cache(async (): Promise<AdminUser | null> => {
   try {
     return await adminApiFetch<AdminUser>("/api/auth/user");
   } catch (err) {
     if (err instanceof AdminApiError) return null;
     return null;
   }
-}
+});

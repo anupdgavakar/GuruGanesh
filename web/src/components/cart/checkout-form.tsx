@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCart } from "@/lib/cart/cart-context";
-import { ApiError } from "@/lib/api/client";
-import { submitOrder } from "@/lib/api/resources";
-import { formatPrice } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/auth-context";
+import { submitOrderAction } from "@/actions/order-actions";
+import { formatPrice, formatPriceOrQuote, formatSubtotal } from "@/lib/utils";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 
@@ -16,10 +17,19 @@ const inputClasses =
   "w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm text-ink-900 placeholder:text-ink-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200";
 
 export function CheckoutForm() {
+  const router = useRouter();
+  const { user } = useAuth();
   const { items, count, subtotal, clear } = useCart();
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<number | null>(null);
+
+  // Checkout requires a logged-in customer — send them to sign in and back.
+  useEffect(() => {
+    if (user === null) {
+      router.replace("/login?next=/checkout");
+    }
+  }, [user, router]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,27 +38,41 @@ export function CheckoutForm() {
 
     const form = new FormData(e.currentTarget);
 
-    try {
-      const res = await submitOrder({
-        customer_name: String(form.get("customer_name") ?? ""),
-        customer_email: String(form.get("customer_email") ?? ""),
-        customer_phone: String(form.get("customer_phone") ?? ""),
-        shipping_address: String(form.get("shipping_address") ?? "") || undefined,
-        notes: String(form.get("notes") ?? "") || undefined,
-        items: items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
-        website: String(form.get("website") ?? ""), // honeypot — stays empty for real users
-      });
-      setOrderId(res.data.id);
-      setStatus("success");
-      clear();
-    } catch (err) {
+    const res = await submitOrderAction({
+      customer_name: String(form.get("customer_name") ?? ""),
+      customer_email: String(form.get("customer_email") ?? ""),
+      customer_phone: String(form.get("customer_phone") ?? ""),
+      shipping_address: String(form.get("shipping_address") ?? "") || undefined,
+      notes: String(form.get("notes") ?? "") || undefined,
+      items: items.map((item) => ({
+        product_id: item.productId,
+        quantity: item.quantity,
+        design_delivery_method: item.designDeliveryMethod,
+        design_reference: item.designReference,
+        design_original_filename: item.designOriginalFilename,
+      })),
+      website: String(form.get("website") ?? ""), // honeypot — stays empty for real users
+    });
+
+    if (res.error || !res.data) {
       setStatus("error");
-      setError(
-        err instanceof ApiError
-          ? "We couldn't place that order — double-check the form and try again."
-          : "We couldn't reach the server. Please try again in a moment.",
-      );
+      setError(res.error ?? "We couldn't place that order — double-check the form and try again.");
+      return;
     }
+
+    setOrderId(res.data.id);
+    setStatus("success");
+    clear();
+  }
+
+  // Not logged in (redirect above is in flight) or still checking session —
+  // show nothing worth interacting with rather than a flash of the form.
+  if (user === undefined || user === null) {
+    return (
+      <Container className="flex flex-col items-center gap-3 py-20 text-center sm:py-28">
+        <p className="text-ink-500">Just a moment…</p>
+      </Container>
+    );
   }
 
   if (status === "success") {
@@ -106,7 +130,14 @@ export function CheckoutForm() {
               <label htmlFor="customer_name" className="mb-1.5 block text-sm font-medium text-ink-700">
                 Full name
               </label>
-              <input id="customer_name" name="customer_name" type="text" required className={inputClasses} />
+              <input
+                id="customer_name"
+                name="customer_name"
+                type="text"
+                required
+                defaultValue={user.name}
+                className={inputClasses}
+              />
             </div>
             <div>
               <label htmlFor="customer_email" className="mb-1.5 block text-sm font-medium text-ink-700">
@@ -120,7 +151,14 @@ export function CheckoutForm() {
             <label htmlFor="customer_phone" className="mb-1.5 block text-sm font-medium text-ink-700">
               Phone
             </label>
-            <input id="customer_phone" name="customer_phone" type="tel" required className={inputClasses} />
+            <input
+              id="customer_phone"
+              name="customer_phone"
+              type="tel"
+              required
+              defaultValue={user.phone ?? ""}
+              className={inputClasses}
+            />
           </div>
 
           <div>
@@ -149,10 +187,10 @@ export function CheckoutForm() {
             <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
           </div>
 
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? <p className="break-words text-sm text-danger">{error}</p> : null}
 
           <Button type="submit" size="lg" disabled={status === "submitting"} className="w-full sm:w-auto">
-            {status === "submitting" ? "Placing order…" : `Place order — ${formatPrice(subtotal)}`}
+            {status === "submitting" ? "Placing order…" : subtotal > 0 ? `Place order — ${formatPrice(subtotal)}` : "Send order request"}
           </Button>
         </form>
 
@@ -165,20 +203,30 @@ export function CheckoutForm() {
               <li key={item.productId} className="flex gap-3">
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-white">
                   {item.thumbnailUrl ? (
-                    <Image src={item.thumbnailUrl} alt="" fill sizes="56px" className="object-cover" unoptimized />
+                    <Image src={item.thumbnailUrl} alt="" fill sizes="56px" className="object-cover" />
                   ) : null}
                 </div>
                 <div className="flex flex-1 flex-col">
                   <p className="line-clamp-1 text-sm font-medium text-ink-900">{item.name}</p>
                   <p className="text-xs text-ink-500">Qty {item.quantity}</p>
+                  {item.designDeliveryMethod ? (
+                    <p className="mt-0.5 flex items-center gap-1 text-xs text-brand-700">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                        <path d="M4 12.5l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Design attached
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-xs text-ink-400">No design file yet</p>
+                  )}
                 </div>
-                <p className="text-sm font-semibold text-ink-900">{formatPrice(item.unitPrice * item.quantity)}</p>
+                <p className="text-sm font-semibold text-ink-900">{formatPriceOrQuote(item.unitPrice, item.quantity)}</p>
               </li>
             ))}
           </ul>
           <div className="mt-4 flex items-center justify-between border-t border-ink-200 pt-3 text-sm">
             <span className="text-ink-500">Subtotal</span>
-            <span className="font-bold text-ink-900">{formatPrice(subtotal)}</span>
+            <span className="font-bold text-ink-900">{formatSubtotal(subtotal)}</span>
           </div>
         </div>
       </div>

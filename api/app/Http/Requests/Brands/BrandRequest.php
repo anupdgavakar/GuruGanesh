@@ -21,7 +21,7 @@ class BrandRequest extends FormRequest
             'slug' => ['required', 'string', 'max:255', Rule::unique('brands', 'slug')->ignore($id)],
             'website_url' => ['nullable', 'url', 'max:255'],
             'status' => ['boolean'],
-            'logo' => [$id ? 'sometimes' : 'nullable', 'image', 'max:2048'],
+            'logo' => [$id ? 'sometimes' : 'nullable', 'image', 'max:15360'],
         ];
     }
 }

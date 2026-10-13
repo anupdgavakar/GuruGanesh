@@ -16,7 +16,7 @@ class StoreMediaRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'type' => ['required', 'in:image,video,document'],
-            'file' => ['required', 'file', 'max:10240'],
+            'file' => ['required', 'file', 'max:15360'],
         ];
     }
 }

@@ -3,23 +3,49 @@ import type { ResourceConfig } from "@/lib/resources/types";
 import { getPath, type Row } from "./resource-cell";
 import { ResourceTableClient } from "./resource-table-client";
 
+const PAGE_FETCH_SIZE = 100;
+/** Safety net so a runaway result set can't loop forever — 5,000 rows is far beyond anything this admin manages today. */
+const MAX_FETCH_PAGES = 50;
+
 async function fetchList(config: ResourceConfig): Promise<Row[]> {
-  const params = new URLSearchParams();
+  const baseParams = new URLSearchParams();
   if (config.supportsInactiveToggle) {
-    params.set(config.inactiveParam ?? "include_inactive", "1");
-  }
-  if (config.paginated) params.set("per_page", "100");
-
-  const qs = params.toString();
-  const path = `/api/${config.endpoint}${qs ? `?${qs}` : ""}`;
-
-  if (config.paginated) {
-    const res = await adminApiFetch<{ status: string; data: { data: Row[] } }>(path);
-    return res.data.data;
+    baseParams.set(config.inactiveParam ?? "include_inactive", "1");
   }
 
-  const res = await adminApiFetch<{ status: string; data: Row[] }>(path);
-  return res.data;
+  if (!config.paginated) {
+    const qs = baseParams.toString();
+    const res = await adminApiFetch<{ status: string; data: Row[] }>(
+      `/api/${config.endpoint}${qs ? `?${qs}` : ""}`,
+    );
+    return res.data;
+  }
+
+  // The list page filters/searches client-side over the full set, so it
+  // needs every row, not just the first page — walk pages until the API
+  // says there are no more. (Previously this took only the first 100 rows,
+  // so anything after that was silently invisible here even though it was
+  // a real row the public API could still serve directly.)
+  const rows: Row[] = [];
+  let page = 1;
+  let lastPage = 1;
+
+  do {
+    const params = new URLSearchParams(baseParams);
+    params.set("per_page", String(PAGE_FETCH_SIZE));
+    params.set("page", String(page));
+
+    const res = await adminApiFetch<{
+      status: string;
+      data: { data: Row[]; current_page: number; last_page: number };
+    }>(`/api/${config.endpoint}?${params.toString()}`);
+
+    rows.push(...res.data.data);
+    lastPage = res.data.last_page;
+    page += 1;
+  } while (page <= lastPage && page <= MAX_FETCH_PAGES);
+
+  return rows;
 }
 
 export interface RelationOption {

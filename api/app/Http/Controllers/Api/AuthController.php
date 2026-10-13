@@ -39,6 +39,14 @@ class AuthController extends Controller
             ]);
         }
 
+        // A team member an admin has switched off can't sign in (checked after
+        // the password so the message doesn't reveal which emails exist).
+        if ($user->is_active === false) {
+            throw ValidationException::withMessages([
+                'email' => 'This account has been switched off. Please ask an admin.',
+            ]);
+        }
+
         RateLimiter::clear($throttleKey);
 
         $token = $user->createToken(

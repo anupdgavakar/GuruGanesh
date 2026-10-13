@@ -7,7 +7,10 @@
  * add a client-side variant once Sanctum tokens are wired up.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Exported so lib/api/design-files.ts can point a raw XMLHttpRequest at the
+// same base URL for progress-tracked uploads (fetch has no upload progress
+// events, so that one file can't go through apiFetch below).
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
   constructor(

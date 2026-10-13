@@ -52,6 +52,29 @@ function dropEmptyFiles(formData: FormData, config: ResourceConfig) {
   }
 }
 
+/** File fields that actually carry a chosen picture, with the API field that holds its public URL. */
+function sentFileFields(formData: FormData, config: ResourceConfig) {
+  const sent: { name: string; label: string; urlField: string }[] = [];
+  for (const field of config.fields) {
+    if (field.type !== "file" || !field.currentUrlField) continue;
+    const value = formData.get(field.name);
+    if (value instanceof File && value.size > 0) {
+      sent.push({ name: field.name, label: field.label, urlField: field.currentUrlField });
+    }
+  }
+  return sent;
+}
+
+/** The record's picture URLs before saving, so a changed URL proves the new file was stored. */
+async function currentUrls(path: string, sent: { urlField: string }[]): Promise<Record<string, unknown>> {
+  try {
+    const res = await adminApiFetch<{ data?: Record<string, unknown> }>(path);
+    return Object.fromEntries(sent.map((f) => [f.urlField, res?.data?.[f.urlField]]));
+  } catch {
+    return {};
+  }
+}
+
 function prepare(formData: FormData, config: ResourceConfig) {
   normalizeBooleans(formData, config);
   dropEmptyRelations(formData, config);
@@ -86,13 +109,33 @@ export async function updateResourceAction(
   const config = getResourceConfig(configKey);
   prepare(formData, config);
 
+  const path = `/api/${config.endpoint}/${encodeURIComponent(recordKeyValue)}`;
+  const sentFiles = sentFileFields(formData, config);
+  const before = sentFiles.length > 0 ? await currentUrls(path, sentFiles) : {};
+
   try {
     // POST, not PUT — routes/api.php maps POST to `update` specifically so
     // multipart file uploads work; PHP never parses multipart PUT bodies.
-    await adminApiFetch(`/api/${config.endpoint}/${encodeURIComponent(recordKeyValue)}`, {
+    const saved = await adminApiFetch<{ data?: Record<string, unknown> }>(path, {
       method: "POST",
       body: formData,
     });
+
+    // A picture that never reached Laravel (PHP drops the whole form when it
+    // is over upload_max_filesize / post_max_size) comes back as a "success"
+    // with the old picture. Catch that here instead of failing silently.
+    const notSaved = sentFiles.filter((f) => {
+      const after = saved?.data?.[f.urlField];
+      return !after || after === before[f.urlField];
+    });
+    if (notSaved.length > 0) {
+      return {
+        error:
+          `The picture (${notSaved.map((f) => f.label).join(", ")}) was not saved — the server did not keep the file. ` +
+          `Most likely it is over PHP's upload limit. Set upload_max_filesize = 32M and post_max_size = 40M in php.ini, ` +
+          `restart "php artisan serve", and try again.`,
+      };
+    }
   } catch (err) {
     if (err instanceof AdminApiError) return { error: err.message, fieldErrors: err.errors };
     return { error: "Could not reach the API." };

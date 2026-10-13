@@ -24,28 +24,34 @@ class Product extends Model
         'slug',
         'description',
         'base_price',
+        'price_on_request',
         'min_quantity',
         'max_quantity',
         'status',
         'is_featured',
+        'banner_headline',
+        'banner_subtext',
         'meta_title',
         'meta_description',
-        // thumbnail_path / header_image_path ARE fillable, but that's safe:
-        // StoreProductRequest/UpdateProductRequest only ever validate
-        // 'thumbnail' and 'header_image' as uploaded files, never these
-        // *_path columns as request input — the controller is the only
-        // place that ever puts a *_path key into the validated array, after
-        // it has stored the file itself via ImageUploadService. A client
-        // can't set an arbitrary path through the API.
+        // thumbnail_path / header_image_path / banner_image_path ARE
+        // fillable, but that's safe: StoreProductRequest/UpdateProductRequest
+        // only ever validate 'thumbnail' / 'header_image' / 'banner_image' as
+        // uploaded files, never these *_path columns as request input — the
+        // controller is the only place that ever puts a *_path key into the
+        // validated array, after it has stored the file itself via
+        // ImageUploadService. A client can't set an arbitrary path through
+        // the API.
         'thumbnail_path',
         'header_image_path',
+        'banner_image_path',
     ];
 
-    protected $appends = ['thumbnail_url', 'header_image_url'];
+    protected $appends = ['thumbnail_url', 'header_image_url', 'banner_image_url'];
 
     protected $casts = [
         'status' => 'boolean',
         'is_featured' => 'boolean',
+        'price_on_request' => 'boolean',
         'base_price' => 'decimal:2',
     ];
 
@@ -67,6 +73,13 @@ class Product extends Model
     {
         return Attribute::make(
             get: fn () => $this->header_image_path ? Storage::disk('public')->url($this->header_image_path) : null,
+        );
+    }
+
+    protected function bannerImageUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->banner_image_path ? Storage::disk('public')->url($this->banner_image_path) : null,
         );
     }
 

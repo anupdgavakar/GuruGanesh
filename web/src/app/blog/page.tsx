@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "Design tips, product guides and news from GuruGanesh Graphics.",
 };
 
-export const revalidate = 300;
+export const revalidate = 30;
 
 function formatDate(value: string | null) {
   if (!value) return null;
@@ -35,7 +35,7 @@ export default async function BlogPage() {
                     alt={post.title}
                     fill
                     sizes="(min-width: 1024px) 33vw, 100vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
+                    className="object-cover transition-transform duration-300 group-hover:scale-105" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-ink-300">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

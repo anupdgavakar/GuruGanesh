@@ -1,30 +1,41 @@
 "use client";
 
 import type { Route } from "next";
+import Image from "next/image";
+import { COMING_SOON_IMAGE } from "@/lib/placeholders";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ProductCategory } from "@/lib/api/types";
 
 /**
  * Secondary nav bar under the header — one quick-link tab per top-level
- * category plus an "All categories" trigger that opens a Printo-style mega
- * menu (one column per category, subcategories listed underneath). Desktop
- * only; the mobile equivalent lives inline in the SiteHeader slide-down
- * menu, since it needs no hover/positioning logic.
+ * category plus an "All categories" trigger. Both open a full-width
+ * dropdown on hover, but they show different things: "All categories" is a
+ * Printo-style mega menu (every category, one column each, subcategories
+ * listed underneath); a single category tab is a Vistaprint-style flyout —
+ * just that category's own subcategories, each as an image + name card, so
+ * a shopper can jump straight to e.g. "Self Inking Stamps" without opening
+ * the full mega menu first.
+ *
+ * Only one of the two panels is ever open at once (they share the same
+ * dropdown surface below the bar), tracked by `active`: "all" for the mega
+ * menu, a category id for a single category's flyout, or null when closed.
+ * Desktop only; the mobile equivalent lives inline in the SiteHeader
+ * slide-down menu, since it needs no hover/positioning logic.
  */
 export function CategoryNav({ categories }: { categories: ProductCategory[] }) {
-  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState<"all" | number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     function onClickAway(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setActive(null);
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") setActive(null);
     }
-    if (open) {
+    if (active !== null) {
       document.addEventListener("mousedown", onClickAway);
       document.addEventListener("keydown", onKeyDown);
     }
@@ -32,31 +43,41 @@ export function CategoryNav({ categories }: { categories: ProductCategory[] }) {
       document.removeEventListener("mousedown", onClickAway);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [active]);
 
   if (categories.length === 0) return null;
 
-  function openNow() {
+  function openNow(key: "all" | number) {
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen(true);
+    setActive(key);
   }
 
   function closeSoon() {
-    closeTimer.current = setTimeout(() => setOpen(false), 150);
+    closeTimer.current = setTimeout(() => setActive(null), 150);
   }
 
   function close() {
-    setOpen(false);
+    setActive(null);
   }
+
+  const activeCategory = typeof active === "number" ? categories.find((c) => c.id === active) : undefined;
+
+  // The quick-link row only shows the categories the admin ticked "Show in the
+  // header menu bar" for (Admin > Categories), in their menu order — capped at
+  // 7 so the bar always fits on one line instead of scrolling sideways. If
+  // nothing has been ticked yet, fall back to the first 6 so it is never empty.
+  // Every category is still reachable through "All categories".
+  const flagged = categories.filter((c) => c.show_in_menu);
+  const barCategories = (flagged.length > 0 ? flagged : categories).slice(0, flagged.length > 0 ? 7 : 6);
 
   return (
     <div ref={rootRef} className="relative hidden border-t border-ink-100 bg-paper-muted/60 md:block" onMouseLeave={closeSoon}>
       <div className="mx-auto flex max-w-7xl items-center gap-7 px-6 lg:px-8">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
-          onMouseEnter={openNow}
-          aria-expanded={open}
+          onClick={() => setActive((v) => (v === "all" ? null : "all"))}
+          onMouseEnter={() => openNow("all")}
+          aria-expanded={active === "all"}
           aria-haspopup="true"
           className="flex shrink-0 items-center gap-1.5 py-3 text-sm font-semibold text-ink-900 transition-colors hover:text-brand-600"
         >
@@ -71,17 +92,20 @@ export function CategoryNav({ categories }: { categories: ProductCategory[] }) {
             fill="none"
             stroke="currentColor"
             strokeWidth="2.5"
-            className={`transition-transform ${open ? "rotate-180" : ""}`}
+            className={`transition-transform ${active === "all" ? "rotate-180" : ""}`}
           >
             <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
 
-        <div className="hidden items-center gap-6 overflow-x-auto lg:flex">
-          {categories.map((category) => (
+        <div className="hidden min-w-0 flex-1 items-center gap-6 overflow-hidden lg:flex">
+          {barCategories.map((category) => (
             <Link
               key={category.id}
               href={`/products/${category.slug}` as Route}
+              onMouseEnter={() => openNow(category.id)}
+              aria-expanded={active === category.id}
+              aria-haspopup="true"
               className="whitespace-nowrap py-3 text-sm font-medium text-ink-600 transition-colors hover:text-brand-600"
             >
               {category.name}
@@ -90,8 +114,8 @@ export function CategoryNav({ categories }: { categories: ProductCategory[] }) {
         </div>
       </div>
 
-      {open ? (
-        <div className="absolute inset-x-0 top-full z-50 border-t border-ink-100 bg-white shadow-xl" onMouseEnter={openNow}>
+      {active === "all" ? (
+        <div className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-14rem)] overflow-y-auto overscroll-contain border-t border-ink-100 bg-white shadow-xl" onMouseEnter={() => openNow("all")}>
           <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-6 py-8 sm:grid-cols-3 lg:grid-cols-6 lg:px-8">
             {categories.map((category) => (
               <div key={category.id}>
@@ -142,6 +166,50 @@ export function CategoryNav({ categories }: { categories: ProductCategory[] }) {
                 Talk to us
               </Link>
             </div>
+          </div>
+        </div>
+      ) : activeCategory ? (
+        <div
+          className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-14rem)] overflow-y-auto overscroll-contain border-t border-ink-100 bg-white shadow-xl"
+          onMouseEnter={() => openNow(activeCategory.id)}
+        >
+          <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
+            {(activeCategory.subcategories ?? []).length > 0 ? (
+              <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+                {(activeCategory.subcategories ?? []).map((sub) => (
+                  <Link
+                    key={sub.id}
+                    href={`/products/${activeCategory.slug}?subcategory=${sub.slug}` as Route}
+                    onClick={close}
+                    className="group flex flex-col items-center gap-2 text-center"
+                  >
+                    <div className="relative h-40 w-40 overflow-hidden rounded-xl bg-paper-muted ring-1 ring-ink-100 transition-shadow group-hover:shadow-md">
+                      <Image
+                        src={sub.image_url ?? COMING_SOON_IMAGE}
+                        alt=""
+                        fill
+                        sizes="160px"
+                        className="object-cover"
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-ink-700 group-hover:text-brand-600">{sub.name}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-500">No subcategories yet.</p>
+            )}
+
+            <Link
+              href={`/products/${activeCategory.slug}` as Route}
+              onClick={close}
+              className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-brand-600 hover:underline"
+            >
+              View all {activeCategory.name}
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
           </div>
         </div>
       ) : null}

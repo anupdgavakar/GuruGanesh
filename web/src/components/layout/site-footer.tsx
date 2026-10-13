@@ -18,6 +18,15 @@ const columns = [
       { href: "/contact", label: "Contact us" },
     ],
   },
+  {
+    title: "Help & policies",
+    links: [
+      { href: "/help", label: "Help center" },
+      { href: "/shipping-returns", label: "Shipping & returns" },
+      { href: "/privacy", label: "Privacy policy" },
+      { href: "/terms", label: "Terms of service" },
+    ],
+  },
 ] as const;
 
 export function SiteFooter() {
@@ -25,7 +34,7 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-ink-100 bg-accent-900 text-accent-100">
-      <Container className="grid gap-10 py-14 sm:grid-cols-2 md:grid-cols-4">
+      <Container className="grid gap-10 py-14 sm:grid-cols-2 md:grid-cols-5">
         <div className="sm:col-span-2 md:col-span-2">
           <div className="flex items-center gap-2.5">
             <Image src="/brand/logo-mark.png" alt="" width={36} height={36} className="h-9 w-9" unoptimized />

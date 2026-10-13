@@ -39,13 +39,78 @@ export interface ApiPaginatedListResponse<T> {
   data: PaginatedResponse<T>;
 }
 
-export type UserRole = "admin" | "staff" | "customer";
+/** Laravel's raw paginator, as /api/orders and /api/inquiries return it (page info at the top level). */
+export interface LaravelPage<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+/** The short key of a role ("admin", "sales", or one you created). */
+export type UserRole = string;
 
 export interface AdminUser {
   id: number;
   name: string;
   email: string;
   role: UserRole;
+  /** The role's display name, e.g. "Sales". */
+  role_name: string;
+  /** What this account may do, from the API — e.g. "orders", "inquiries", "users". */
+  permissions: string[];
+}
+
+/** A person who works in the admin panel (the Team page). */
+export interface TeamMember {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: UserRole;
+  role_name: string;
+  is_active: boolean;
+  created_at: string;
+  /** How many inquiries / orders they are handling now. */
+  inquiries_count?: number;
+  orders_count?: number;
+}
+
+/** Who is handling an inquiry or an order. */
+export interface Handler {
+  id: number;
+  name: string;
+  role: UserRole;
+  role_name: string;
+}
+
+/** A role and what it may do (the Roles part of the Team page). */
+export interface RoleDefinition {
+  id: number;
+  key: string;
+  name: string;
+  description: string | null;
+  permissions: string[];
+  /** Built-in roles can't be deleted; the Admin role can't be edited. */
+  is_system: boolean;
+  users_count?: number;
+}
+
+export type ActivityAction = "claimed" | "assigned" | "unassigned" | "status_changed" | "note";
+
+/** One line in the timeline of an inquiry or order. */
+export interface ActivityEntry {
+  id: number;
+  action: ActivityAction;
+  user_id: number | null;
+  user_name: string | null;
+  /** The role's name when the entry was made, e.g. "Sales". */
+  user_role: string | null;
+  from_value: string | null;
+  to_value: string | null;
+  note: string | null;
+  created_at: string;
 }
 
 export interface ProductImage {
@@ -59,6 +124,9 @@ export interface ProductCategory {
   id: number;
   name: string;
   slug: string;
+  image_url?: string | null;
+  show_in_menu?: boolean;
+  menu_order?: number;
   meta_title: string | null;
   meta_description: string | null;
   subcategories?: ProductSubcategory[];
@@ -124,6 +192,8 @@ export interface Product {
   header_image_url: string | null;
   meta_title: string | null;
   meta_description: string | null;
+  banner_image_url?: string | null;
+  price_on_request?: boolean;
   images?: ProductImage[];
   category?: ProductCategory;
 }
@@ -201,15 +271,27 @@ export type InquiryStatus = "new" | "read" | "responded";
 export interface ContactInquiry {
   id: number;
   name: string;
-  email: string;
+  /** Empty for a price request from a customer who signed in with a phone number only. */
+  email: string | null;
   phone: string | null;
+  /** "price_request" for someone asking the price of a product, otherwise a contact-form message. */
+  type?: "contact" | "price_request";
+  quantity?: number | null;
+  /** The product a price request is about, with its real price and pictures. */
+  product?: Product | null;
   subject: string | null;
   message: string;
   status: InquiryStatus;
+  assignee?: Handler | null;
+  assigned_at?: string | null;
+  activities?: ActivityEntry[];
   created_at: string;
 }
 
 export type OrderStatus = "pending_review" | "confirmed" | "processing" | "completed" | "cancelled";
+
+/** How the customer got us the artwork for one order line item. */
+export type DesignDeliveryMethod = "link" | "email" | "upload";
 
 export interface OrderItem {
   id: number;
@@ -219,6 +301,17 @@ export interface OrderItem {
   unit_price: string;
   quantity: number;
   line_total: string;
+  design_delivery_method: DesignDeliveryMethod | null;
+  /** A pasted share link (method "link"), or the private storage path behind GET /order-items/{item}/design-file (method "upload"). */
+  design_reference: string | null;
+  design_original_filename: string | null;
+}
+
+/** The small whitelist of site settings the API exposes at GET/PATCH /settings. */
+export interface SiteSettings {
+  design_submission_email: string;
+  /** When true the website shows no prices at all — customers must ask. */
+  hide_prices: boolean;
 }
 
 export interface Order {
@@ -231,5 +324,8 @@ export interface Order {
   subtotal: string;
   status: OrderStatus;
   items: OrderItem[];
+  assignee?: Handler | null;
+  assigned_at?: string | null;
+  activities?: ActivityEntry[];
   created_at: string;
 }

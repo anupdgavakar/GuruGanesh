@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/lib/cart/cart-context";
-import { formatPrice } from "@/lib/utils";
+import { formatPriceOrQuote, formatSubtotal, stepQuantityDown, stepQuantityUp } from "@/lib/utils";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { DesignPicker } from "@/components/cart/design-picker";
 
-export function CartPage() {
+export function CartPage({ designSubmissionEmail }: { designSubmissionEmail: string }) {
   const { items, count, subtotal, updateQuantity, removeItem } = useCart();
 
   if (items.length === 0) {
@@ -50,7 +51,7 @@ export function CartPage() {
                 className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-paper-muted sm:h-24 sm:w-24"
               >
                 {item.thumbnailUrl ? (
-                  <Image src={item.thumbnailUrl} alt="" fill sizes="96px" className="object-cover" unoptimized />
+                  <Image src={item.thumbnailUrl} alt="" fill sizes="96px" className="object-cover" />
                 ) : null}
               </Link>
 
@@ -74,7 +75,7 @@ export function CartPage() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.productId, stepQuantityDown(item.quantity, item.minQuantity))}
                       disabled={item.quantity <= item.minQuantity}
                       className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-200 text-ink-700 disabled:opacity-30"
                     >
@@ -83,15 +84,16 @@ export function CartPage() {
                     <span className="w-8 text-center font-semibold text-ink-900">{item.quantity}</span>
                     <button
                       type="button"
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.productId, stepQuantityUp(item.quantity, item.minQuantity, item.maxQuantity))}
                       disabled={item.maxQuantity !== null && item.quantity >= item.maxQuantity}
                       className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-200 text-ink-700 disabled:opacity-30"
                     >
                       +
                     </button>
                   </div>
-                  <p className="font-bold text-ink-900">{formatPrice(item.unitPrice * item.quantity)}</p>
+                  <p className="font-bold text-ink-900">{formatPriceOrQuote(item.unitPrice, item.quantity)}</p>
                 </div>
+                <DesignPicker item={item} designEmail={designSubmissionEmail} />
               </div>
             </li>
           ))}
@@ -101,7 +103,7 @@ export function CartPage() {
           <h2 className="font-display text-lg font-bold text-ink-900">Order summary</h2>
           <div className="mt-4 flex items-center justify-between text-sm">
             <span className="text-ink-500">Subtotal</span>
-            <span className="font-semibold text-ink-900">{formatPrice(subtotal)}</span>
+            <span className="font-semibold text-ink-900">{formatSubtotal(subtotal)}</span>
           </div>
           <p className="mt-2 text-xs text-ink-500">
             Final pricing and delivery are confirmed by our team after checkout — no online payment is taken now.

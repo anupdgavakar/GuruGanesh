@@ -21,7 +21,7 @@ class TestimonialRequest extends FormRequest
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
             'message' => [$isCreate ? 'required' : 'sometimes', 'required', 'string'],
             'status' => ['boolean'],
-            'avatar' => ['nullable', 'image', 'max:2048'],
+            'avatar' => ['nullable', 'image', 'max:15360'],
         ];
     }
 }

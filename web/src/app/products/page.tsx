@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { iconFor } from "@/lib/category-icons";
-import { imageFor } from "@/lib/category-images";
+import { COMING_SOON_IMAGE } from "@/lib/placeholders";
 import { getCategories } from "@/lib/api/resources";
 
 export const metadata: Metadata = {
@@ -39,7 +39,9 @@ export default async function ProductsPage() {
         {categories.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => {
-              const photo = imageFor(category.name);
+              const photo = category.image_url
+                ? { url: category.image_url, alt: category.name }
+                : { url: COMING_SOON_IMAGE, alt: `${category.name} — coming soon` };
 
               return (
                 <Link
@@ -47,14 +49,14 @@ export default async function ProductsPage() {
                   href={`/products/${category.slug}`}
                   className="group flex flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[var(--shadow-card)] transition-all hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg"
                 >
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-paper-muted">
+                  <div className="relative aspect-square w-full overflow-hidden bg-paper-muted">
                     {photo ? (
                       <Image
                         src={photo.url}
                         alt={photo.alt}
                         fill
                         sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
+                        className="object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (
                       <span
                         aria-hidden

@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCartPanel } from "@/components/products/add-to-cart-panel";
+import { AskPricePanel } from "@/components/products/ask-price-panel";
+import { ProductGallery } from "@/components/products/product-gallery";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { getProductBySlug } from "@/lib/api/resources";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, isQuoteOnly, pageTitle } from "@/lib/utils";
+import { COMING_SOON_IMAGE } from "@/lib/placeholders";
 
 export const revalidate = 300;
 
@@ -19,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   if (!product) return {};
 
   return {
-    title: product.meta_title || product.name,
+    title: pageTitle(product.meta_title || product.name),
     description: product.meta_description || product.description || undefined,
     openGraph: product.thumbnail_url ? { images: [product.thumbnail_url] } : undefined,
   };
@@ -31,8 +33,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
 
   if (!product) notFound();
 
-  const heroImage = product.header_image_url ?? product.thumbnail_url ?? product.images?.[0]?.url ?? null;
-  const gallery = product.images ?? [];
+  // Every picture this product has, main one first, without repeats.
+  const pictures = Array.from(
+    new Set(
+      [product.header_image_url, product.thumbnail_url, ...(product.images ?? []).map((image) => image.url)].filter(
+        (url): url is string => Boolean(url),
+      ),
+    ),
+  ).slice(0, 12);
 
   return (
     <Container className="py-16 sm:py-24">
@@ -49,37 +57,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-2">
-        <div>
-          <div className="relative aspect-square w-full overflow-hidden rounded-[var(--radius-card)] bg-paper-muted">
-            {heroImage ? (
-              <Image src={heroImage} alt={product.name} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" unoptimized />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-ink-300">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M3 16l5-5 4 4 5-6 4 5" />
-                </svg>
-              </div>
-            )}
-          </div>
-
-          {gallery.length > 0 ? (
-            <div className="mt-4 grid grid-cols-4 gap-3">
-              {gallery.slice(0, 8).map((image) =>
-                image.url ? (
-                  <div key={image.id} className="relative aspect-square overflow-hidden rounded-lg bg-paper-muted">
-                    <Image src={image.url} alt={product.name} fill sizes="120px" className="object-cover" unoptimized />
-                  </div>
-                ) : null,
-              )}
-            </div>
-          ) : null}
-        </div>
+        <ProductGallery images={pictures.length > 0 ? pictures : [COMING_SOON_IMAGE]} name={product.name} />
 
         <div>
           {product.category ? <Badge>{product.category.name}</Badge> : null}
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink-900 sm:text-4xl">{product.name}</h1>
-          <p className="mt-4 text-2xl font-bold text-brand-600">From {formatPrice(product.base_price)}</p>
+          <p className="mt-4 text-2xl font-bold text-brand-600">{isQuoteOnly(product.base_price) ? "Ask for price" : `From ${formatPrice(product.base_price)}`}</p>
 
           {product.description ? <p className="mt-4 text-ink-700">{product.description}</p> : null}
 
@@ -108,7 +91,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
             ) : null}
           </dl>
 
-          <AddToCartPanel product={product} categorySlug={product.category?.slug ?? categorySlug} />
+          {isQuoteOnly(product.base_price) ? (
+            <AskPricePanel product={product} />
+          ) : (
+            <AddToCartPanel product={product} categorySlug={product.category?.slug ?? categorySlug} />
+          )}
 
           <div className="mt-4">
             <ButtonLink href="/products" variant="outline" size="sm">

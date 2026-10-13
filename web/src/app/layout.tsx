@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { CartProvider } from "@/lib/cart/cart-context";
+import { AuthProvider } from "@/lib/auth/auth-context";
 import { getCategories } from "@/lib/api/resources";
 // Self-hosted via @fontsource (npm), not next/font/google — this app builds
 // and runs fully offline, with no runtime dependency on fonts.googleapis.com.
@@ -39,11 +40,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full">
       <body className="flex min-h-full flex-col bg-paper text-ink-900 antialiased">
-        <CartProvider>
-          <SiteHeader categories={categories} />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <SiteHeader categories={categories} />
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

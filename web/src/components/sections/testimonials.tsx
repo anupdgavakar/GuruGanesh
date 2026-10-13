@@ -1,4 +1,7 @@
-import { Card } from "@/components/ui/card";
+"use client";
+
+import Image from "next/image";
+import { useRef, useState } from "react";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import type { Testimonial } from "@/lib/api/types";
@@ -12,8 +15,42 @@ function initials(name: string) {
     .join("");
 }
 
+/**
+ * A horizontally-scrolling carousel of testimonial cards (swipe/scroll,
+ * scroll-snap per card) with dot pagination underneath — replaces the old
+ * static 2–3 column grid. Each dot's active state and the "scroll to this
+ * card" behavior both key off which card is nearest the track's center, so
+ * this needs to be a client component (plain CSS scroll-snap alone can't
+ * drive the dots).
+ */
 export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) {
+  const [active, setActive] = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   if (testimonials.length === 0) return null;
+
+  function scrollToCard(i: number) {
+    cardRefs.current[i]?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }
+
+  function onScroll() {
+    const track = trackRef.current;
+    if (!track) return;
+    const trackCenter = track.scrollLeft + track.clientWidth / 2;
+    let closest = 0;
+    let closestDist = Infinity;
+    cardRefs.current.forEach((card, i) => {
+      if (!card) return;
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const dist = Math.abs(cardCenter - trackCenter);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = i;
+      }
+    });
+    setActive(closest);
+  }
 
   return (
     <section className="relative overflow-hidden py-16 sm:py-24">
@@ -21,30 +58,49 @@ export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) 
         aria-hidden
         className="absolute -bottom-32 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-accent-100/40 blur-3xl"
       />
-      <Container className="relative">
-        <SectionHeading align="center" eyebrow="Customers" title="Loved by businesses like yours" />
 
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {testimonials.map((t) => (
-            <Card key={t.id} className="relative overflow-hidden p-6">
-              <svg
-                aria-hidden
-                width="42"
-                height="42"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="absolute -right-1 -top-1 text-brand-50"
-              >
-                <path d="M9.5 6C6.5 7.5 5 10 5 13c0 2.2 1.5 3.5 3.3 3.5 1.7 0 3-1.2 3-3 0-1.6-1.1-2.7-2.5-2.9.3-1.5 1.5-2.9 3.2-3.7L9.5 6zm9 0c-3 1.5-4.5 4-4.5 7 0 2.2 1.5 3.5 3.3 3.5 1.7 0 3-1.2 3-3 0-1.6-1.1-2.7-2.5-2.9.3-1.5 1.5-2.9 3.2-3.7L18.5 6z" />
-              </svg>
-              <div className="relative flex gap-0.5 text-brand-500" aria-label={`${t.rating} out of 5 stars`}>
-                {Array.from({ length: 5 }).map((_, i) => (
+      <div className="relative">
+        <Container>
+          <SectionHeading align="center" eyebrow="Customers" title="Loved by businesses like yours" />
+        </Container>
+
+        <div
+          ref={trackRef}
+          onScroll={onScroll}
+          className="no-scrollbar mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-6 pb-2 sm:px-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]"
+        >
+          {testimonials.map((t, i) => (
+            <div
+              key={t.id}
+              ref={(el) => {
+                cardRefs.current[i] = el;
+              }}
+              className="relative w-[82vw] shrink-0 snap-center rounded-2xl border border-ink-100 bg-white p-6 shadow-[var(--shadow-card)] sm:w-[340px]"
+            >
+              <div className="flex items-center gap-3">
+                {t.avatar_url ? (
+                  <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full">
+                    <Image src={t.avatar_url} alt="" fill sizes="44px" className="object-cover" />
+                  </span>
+                ) : (
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-brand-500 to-accent-600 text-sm font-bold text-white">
+                    {initials(t.customer_name)}
+                  </span>
+                )}
+                <div>
+                  <p className="text-sm font-semibold text-ink-900">{t.customer_name}</p>
+                  {t.customer_company ? <p className="text-xs text-ink-500">{t.customer_company}</p> : null}
+                </div>
+              </div>
+
+              <div className="mt-3 flex gap-0.5 text-brand-500" aria-label={`${t.rating} out of 5 stars`}>
+                {Array.from({ length: 5 }).map((_, si) => (
                   <svg
-                    key={i}
+                    key={si}
                     width="16"
                     height="16"
                     viewBox="0 0 24 24"
-                    fill={i < t.rating ? "currentColor" : "none"}
+                    fill={si < t.rating ? "currentColor" : "none"}
                     stroke="currentColor"
                     strokeWidth="1.5"
                   >
@@ -52,17 +108,29 @@ export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) 
                   </svg>
                 ))}
               </div>
-              <p className="relative mt-4 text-sm text-ink-700">&ldquo;{t.message}&rdquo;</p>
-              <div className="relative mt-5 flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-brand-500 to-accent-600 text-xs font-bold text-white">
-                  {initials(t.customer_name)}
-                </span>
-                <p className="text-sm font-semibold text-ink-900">{t.customer_name}</p>
-              </div>
-            </Card>
+
+              <p className="mt-3 text-sm text-ink-700">&ldquo;{t.message}&rdquo;</p>
+            </div>
           ))}
         </div>
-      </Container>
+
+        {testimonials.length > 1 ? (
+          <div className="mt-6 flex justify-center gap-2">
+            {testimonials.map((t, i) => (
+              <button
+                key={t.id}
+                type="button"
+                aria-label={`Go to testimonial ${i + 1}`}
+                aria-current={i === active}
+                onClick={() => scrollToCard(i)}
+                className={`h-2 rounded-full transition-all ${
+                  i === active ? "w-6 bg-brand-500" : "w-2 bg-ink-100 hover:bg-ink-300"
+                }`}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

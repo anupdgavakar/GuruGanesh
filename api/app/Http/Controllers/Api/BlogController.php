@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Blogs\BlogRequest;
 use App\Models\Blog;
 use App\Services\ImageUploadService;
+use App\Support\HtmlSanitizer;
 use Illuminate\Http\Request;
 
 class BlogController extends Controller
@@ -42,6 +43,7 @@ class BlogController extends Controller
     {
         $validated = $request->safe()->except('thumbnail');
         $validated['author_id'] = $request->user()->id;
+        $validated['content'] = HtmlSanitizer::clean($validated['content']);
 
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail_path'] = $this->uploads->store($request->file('thumbnail'), 'blogs');
@@ -55,6 +57,10 @@ class BlogController extends Controller
     public function update(BlogRequest $request, Blog $blog)
     {
         $validated = $request->safe()->except('thumbnail');
+
+        if (isset($validated['content'])) {
+            $validated['content'] = HtmlSanitizer::clean($validated['content']);
+        }
 
         if ($request->hasFile('thumbnail')) {
             $this->uploads->delete($blog->thumbnail_path);

@@ -7,6 +7,7 @@ use App\Http\Requests\Products\StoreProductRequest;
 use App\Http\Requests\Products\UpdateProductRequest;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\Setting;
 use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -54,18 +55,61 @@ class ProductController extends Controller
             $query->where('is_featured', true);
         }
 
+        // Powers the storefront header's search bar (see web/src/app/search) —
+        // a simple LIKE match on name/description, no full-text index needed
+        // at this catalog's size.
+        if ($request->filled('search')) {
+            $term = $request->string('search')->toString();
+
+            $query->where(function ($inner) use ($term) {
+                $inner->where('name', 'like', "%{$term}%")
+                    ->orWhere('description', 'like', "%{$term}%");
+            });
+        }
+
+        $page = $query->latest()->paginate($request->integer('per_page', 24));
+
+        $this->hidePricesForPublic($request, $page->getCollection());
+
         return response()->json([
             'status' => 'success',
-            'data' => $query->latest()->paginate($request->integer('per_page', 24)),
+            'data' => $page,
         ]);
+    }
+
+    /**
+     * The website must never reveal a price the owner has chosen to keep
+     * private — either for one product (price_on_request) or for the whole
+     * shop (the "hide prices" setting). Hiding it in the page is not enough,
+     * since anyone can read the API response, so the price is blanked here,
+     * for everyone except signed-in admin/staff (who need the real value to
+     * edit it). The storefront treats a price of 0 as "Ask for price".
+     *
+     * @param  iterable<Product>  $products
+     */
+    private function hidePricesForPublic(Request $request, iterable $products): void
+    {
+        if ($request->user('sanctum')?->canManageCatalog()) {
+            return;
+        }
+
+        $hideAll = Setting::hidePrices();
+
+        foreach ($products as $product) {
+            if ($hideAll || $product->price_on_request) {
+                $product->base_price = 0;
+            }
+        }
     }
 
     /**
      * Public: single product by id or slug.
      */
-    public function show(Product $product)
+    public function show(Request $request, Product $product)
     {
         $product->load(self::EAGER_LOAD);
+
+        $this->hidePricesForPublic($request, [$product]);
 
         return response()->json(['status' => 'success', 'data' => $product]);
     }
@@ -75,7 +119,7 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request)
     {
-        $validated = $request->safe()->except(['thumbnail', 'header_image', 'images']);
+        $validated = $request->safe()->except(['thumbnail', 'header_image', 'banner_image', 'images']);
 
         return DB::transaction(function () use ($request, $validated) {
             if ($request->hasFile('thumbnail')) {
@@ -84,6 +128,10 @@ class ProductController extends Controller
 
             if ($request->hasFile('header_image')) {
                 $validated['header_image_path'] = $this->uploads->store($request->file('header_image'), 'products/headers');
+            }
+
+            if ($request->hasFile('banner_image')) {
+                $validated['banner_image_path'] = $this->uploads->store($request->file('banner_image'), 'products/banners');
             }
 
             $product = Product::create($validated);
@@ -110,7 +158,8 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product)
     {
         $validated = $request->safe()->except([
-            'thumbnail', 'header_image', 'remove_thumbnail', 'remove_header_image',
+            'thumbnail', 'header_image', 'banner_image',
+            'remove_thumbnail', 'remove_header_image', 'remove_banner_image',
             'images', 'remove_image_ids',
         ]);
 
@@ -129,6 +178,14 @@ class ProductController extends Controller
             } elseif ($request->hasFile('header_image')) {
                 $this->uploads->delete($product->header_image_path);
                 $validated['header_image_path'] = $this->uploads->store($request->file('header_image'), 'products/headers');
+            }
+
+            if ($request->boolean('remove_banner_image')) {
+                $this->uploads->delete($product->banner_image_path);
+                $validated['banner_image_path'] = null;
+            } elseif ($request->hasFile('banner_image')) {
+                $this->uploads->delete($product->banner_image_path);
+                $validated['banner_image_path'] = $this->uploads->store($request->file('banner_image'), 'products/banners');
             }
 
             $product->update($validated);
@@ -172,6 +229,7 @@ class ProductController extends Controller
         DB::transaction(function () use ($product) {
             $this->uploads->delete($product->thumbnail_path);
             $this->uploads->delete($product->header_image_path);
+            $this->uploads->delete($product->banner_image_path);
 
             foreach ($product->images as $image) {
                 $this->uploads->delete($image->path);

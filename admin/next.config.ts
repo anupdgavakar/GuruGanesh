@@ -24,6 +24,13 @@ const apiPattern = apiRemotePattern();
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
+  experimental: {
+    // Photos are optimised before upload, but a phone photo can still be
+    // several MB. Defaults (1 MB for server actions, 10 MB through the
+    // proxy) would reject it before it ever reaches the API.
+    serverActions: { bodySizeLimit: "50mb" },
+    proxyClientMaxBodySize: "50mb",
+  },
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", port: "8000", pathname: "/storage/**" },

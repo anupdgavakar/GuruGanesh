@@ -2,6 +2,7 @@ import type { Metadata, Route } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/sections/product-card";
+import { pageTitle } from "@/lib/utils";
 import { Container } from "@/components/ui/container";
 import { iconFor } from "@/lib/category-icons";
 import { getCategoryBySlug, getProducts } from "@/lib/api/resources";
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   if (!category) return {};
 
   return {
-    title: category.meta_title || category.name,
+    title: pageTitle(category.meta_title || category.name),
     description: category.meta_description || `Browse ${category.name} at GuruGanesh Graphics.`,
   };
 }

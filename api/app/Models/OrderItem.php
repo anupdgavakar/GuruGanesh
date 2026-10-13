@@ -22,6 +22,11 @@ class OrderItem extends Model
         'unit_price',
         'quantity',
         'line_total',
+        // How the customer is getting us their artwork — all optional, see
+        // the add_design_fields_to_order_items_table migration.
+        'design_delivery_method',
+        'design_reference',
+        'design_original_filename',
     ];
 
     protected $casts = [

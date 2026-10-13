@@ -1,150 +1,199 @@
 "use client";
-// REVERT-TEST-1790146991
 
 import { useEffect, useState } from "react";
 import type { Route } from "next";
 import Image from "next/image";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { evenCapped, formatPrice } from "@/lib/utils";
-import type { Product } from "@/lib/api/types";
+import type { Slider } from "@/lib/api/types";
 
-const AUTO_ADVANCE_MS = 6000;
-const MAX_SLIDES = 4;
+/** Time each set of slides stays on screen before sliding to the next. */
+const AUTO_ADVANCE_MS = 5500;
 
 /**
- * Homepage hero. Admin marks up to 4 trending products as "homepage
- * featured" (a one-click toggle on the products list — no separate slider
- * to manage), and those become an auto-rotating carousel here: each slide
- * is one product's image with its name/price and a "Get more details"
- * button straight to that product's page.
+ * Homepage hero. This is its own admin-managed list — "Homepage Slides" in
+ * the admin panel — independent of products: a slide might promote a
+ * specific product, but it might just as easily be a category push or
+ * general company/brand messaging, so it isn't derived from the product
+ * catalog the way the "Featured Products" row below it is.
  *
- * The storefront never shows a lopsided 1- or 3-slide carousel: `products`
- * comes in pre-capped/evened by the homepage (see evenCapped in lib/utils),
- * but filtering out any without an image could still leave an odd count
- * here, so it's re-evened after that filter too (0, 2, or 4 — never 1 or
- * 3). A 0-slide result falls back to the original static hero.
+ * Layout per slide: heading, then the image (in a rounded card, with dot
+ * navigation under it), then the subheading, then the two buttons — one
+ * slide visible at a time, advancing automatically every AUTO_ADVANCE_MS.
+ * Zero slides (nothing added in admin yet, or none currently active) falls
+ * back to the original static hero.
  */
-export function Hero({ products }: { products: Product[] }) {
-  const items = evenCapped(
-    products.filter((p) => p.thumbnail_url || p.header_image_url),
-    MAX_SLIDES,
-  );
-
-  if (items.length === 0) {
+export function Hero({ slides }: { slides: Slider[] }) {
+  if (slides.length === 0) {
     return <StaticHero />;
   }
 
-  return <HeroCarousel products={items} />;
+  return <HeroCarousel slides={slides} />;
 }
 
-function slideImage(product: Product): string | null {
-  return product.header_image_url ?? product.thumbnail_url ?? product.images?.[0]?.url ?? null;
+function slideHref(slide: Slider): Route | null {
+  if (!slide.link_url) return null;
+  return slide.link_url as Route;
 }
 
-function slideHref(product: Product): Route {
-  const categorySlug = product.category?.slug ?? "products";
-  return `/products/${categorySlug}/${product.slug}` as Route;
-}
+/** How many slide-cards show at once on desktop, side by side (on mobile one shows at a time). */
+const VISIBLE_COUNT = 3;
+/** Length of the slide-over animation. Keep in sync with `duration-700` below. */
+const TRANSITION_MS = 700;
+/** Space between cards. */
+const GAP = "1.5rem";
 
-function HeroCarousel({ products }: { products: Product[] }) {
+function HeroCarousel({ slides }: { slides: Slider[] }) {
+  const total = slides.length;
+  const visibleCount = Math.min(VISIBLE_COUNT, total);
+
+  // `index` is the slide at the left edge. The track holds the real slides
+  // followed by copies of the first `visibleCount`, so after the last real
+  // slide it keeps sliding forward into the copies, then snaps back to 0
+  // (invisibly — the copies look identical) for an endless loop.
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [animate, setAnimate] = useState(true);
+  const items = [...slides, ...slides.slice(0, visibleCount)];
 
   useEffect(() => {
-    if (paused || products.length <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % products.length), AUTO_ADVANCE_MS);
+    if (total <= 1) return;
+    const id = setInterval(() => setIndex((i) => i + 1), AUTO_ADVANCE_MS);
     return () => clearInterval(id);
-  }, [paused, products.length]);
+  }, [total]);
+
+  // Reached the copies: once the slide-over finishes, jump back to the start with no animation.
+  useEffect(() => {
+    if (index < total) return;
+    const t = setTimeout(() => {
+      setAnimate(false);
+      setIndex(index - total);
+    }, TRANSITION_MS + 60);
+    return () => clearTimeout(t);
+  }, [index, total]);
+
+  // Turn the animation back on once the snap-back has been painted.
+  useEffect(() => {
+    if (animate) return;
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setAnimate(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [animate]);
 
   function goTo(i: number) {
-    setIndex(((i % products.length) + products.length) % products.length);
+    setAnimate(true);
+    setIndex(i);
   }
 
+  const current = index % total;
+  const visibleIds = new Set(Array.from({ length: visibleCount }, (_, k) => slides[(current + k) % total].id));
+
   return (
-    <section
-      className="relative min-h-[520px] overflow-hidden bg-accent-900 sm:min-h-[600px]"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      {products.map((product, i) => {
-        const image = slideImage(product);
-        return (
+    <section className="relative overflow-hidden bg-linear-to-br from-accent-900 via-accent-800 to-brand-900">
+      <div aria-hidden className="absolute -top-32 -right-16 h-[28rem] w-[28rem] rounded-full bg-brand-500/30 blur-3xl" />
+      <div aria-hidden className="absolute -bottom-40 -left-24 h-[26rem] w-[26rem] rounded-full bg-accent-400/25 blur-3xl" />
+
+      <Container className="relative py-16 sm:py-20 lg:py-24">
+        <div className="overflow-x-clip py-6">
           <div
-            key={product.id}
-            aria-hidden={i !== index}
-            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-              i === index ? "opacity-100" : "pointer-events-none opacity-0"
-            }`}
+            className="flex"
+            style={{ gap: GAP, ["--gap" as string]: GAP, ["--n" as string]: visibleCount }}
           >
-            {image ? (
-              <Image src={image} alt="" fill priority={i === 0} sizes="100vw" className="object-cover" unoptimized />
-            ) : null}
-            <div className="absolute inset-0 bg-linear-to-r from-accent-900 via-accent-900/80 to-accent-900/30" />
-
-            <Container className="relative flex h-full min-h-[520px] flex-col items-start justify-center gap-5 py-20 sm:min-h-[600px] sm:py-28">
-              {product.category ? (
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-brand-200 ring-1 ring-white/15 backdrop-blur-sm">
-                  {product.category.name}
-                </span>
-              ) : null}
-              <h1 className="max-w-2xl text-3xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl">
-                {product.name}
-              </h1>
-              <p className="max-w-xl text-base text-accent-100/90 sm:text-lg">
-                Starting at {formatPrice(product.base_price)}
-              </p>
-              <ButtonLink href={slideHref(product)} size="lg" className="shadow-lg shadow-brand-900/40">
-                Get more details
-              </ButtonLink>
-            </Container>
+            {items.map((slide, i) => (
+              <div
+                key={`${slide.id}-${i}`}
+                aria-hidden={i >= total}
+                className={`w-full flex-none lg:w-[calc((100%_-_var(--gap)*(var(--n)_-_1))/var(--n))] ${
+                  animate ? "transition-transform duration-700 ease-in-out motion-reduce:transition-none" : "transition-none"
+                }`}
+                style={{ transform: `translateX(calc(${-index} * (100% + var(--gap))))` }}
+              >
+                <SlideCard slide={slide} first={i === 0} />
+              </div>
+            ))}
           </div>
-        );
-      })}
+        </div>
 
-      {products.length > 1 ? (
-        <>
-          <div className="absolute inset-x-0 bottom-5 z-10 flex justify-center gap-2">
-            {products.map((product, i) => (
+        {total > 1 && (
+          <div className="mt-6 flex justify-center gap-2">
+            {slides.map((s, i) => (
               <button
-                key={product.id}
+                key={s.id}
                 type="button"
                 aria-label={`Go to slide ${i + 1}`}
-                aria-current={i === index}
+                aria-current={visibleIds.has(s.id)}
                 onClick={() => goTo(i)}
                 className={`h-2 rounded-full transition-all ${
-                  i === index ? "w-6 bg-white" : "w-2 bg-white/40 hover:bg-white/70"
+                  visibleIds.has(s.id) ? "w-6 bg-white" : "w-2 bg-white/40 hover:bg-white/70"
                 }`}
               />
             ))}
           </div>
-          <button
-            type="button"
-            aria-label="Previous slide"
-            onClick={() => goTo(index - 1)}
-            className="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 sm:flex"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            aria-label="Next slide"
-            onClick={() => goTo(index + 1)}
-            className="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 sm:flex"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </>
-      ) : null}
+        )}
+      </Container>
     </section>
   );
 }
 
-/** Original static hero — shown until the admin marks at least 2 products as homepage featured. */
+/**
+ * One slide's content: the image on top, then a single row underneath with
+ * the heading, subheading and buttons all side by side (wrapping to stack
+ * only if the card gets too narrow to fit them, e.g. on small phones).
+ */
+function SlideCard({ slide, first }: { slide: Slider; first: boolean }) {
+  const href = slideHref(slide);
+  const headline = slide.title?.trim() || "Guru Ganesh Graphics";
+  const description = slide.subtitle?.trim() || "";
+  const Heading = first ? "h1" : "h2";
+
+  return (
+    <div className="flex flex-col items-center gap-5">
+      <div className="relative aspect-square w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/30 ring-1 ring-white/10">
+        {slide.image_url ? (
+          <Image
+            src={slide.image_url}
+            alt=""
+            fill
+            priority={first}
+            sizes="(min-width: 1024px) 45vw, 90vw"
+            className="object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-white/5" />
+        )}
+      </div>
+
+      <div className="flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-3 text-left">
+        <Heading className="text-lg font-extrabold leading-tight tracking-tight text-white sm:text-xl">
+          {headline}
+        </Heading>
+
+        {description ? <p className="text-sm text-accent-100/90 sm:text-base">{description}</p> : null}
+
+        <div className="flex flex-wrap gap-2.5">
+          {href ? (
+            <ButtonLink href={href} className="shadow-lg shadow-brand-900/40">
+              Get more details
+            </ButtonLink>
+          ) : null}
+          <ButtonLink
+            href="/products"
+            variant={href ? "outline" : "primary"}
+            className={href ? "border-white/30 text-white hover:bg-white/10" : "shadow-lg shadow-brand-900/40"}
+          >
+            View all products
+          </ButtonLink>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Original static hero — shown until admin adds at least one active homepage slide. */
 function StaticHero() {
   const badges = [
     { label: "500+ businesses served" },
@@ -163,7 +212,6 @@ function StaticHero() {
         width={520}
         height={520}
         className="pointer-events-none absolute -right-24 top-1/2 hidden -translate-y-1/2 opacity-[0.08] lg:block"
-        unoptimized
       />
       <div
         aria-hidden

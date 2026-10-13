@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 const statuses: InquiryStatus[] = ["new", "read", "responded"];
 
-export function InquiryActions({ inquiry }: { inquiry: ContactInquiry }) {
+export function InquiryActions({ inquiry, canDelete }: { inquiry: ContactInquiry; canDelete: boolean }) {
   const [pending, startTransition] = useTransition();
 
   return (
@@ -23,17 +23,19 @@ export function InquiryActions({ inquiry }: { inquiry: ContactInquiry }) {
           Mark {status}
         </Button>
       ))}
-      <Button
-        variant="danger"
-        size="sm"
-        disabled={pending}
-        onClick={() => {
-          if (!window.confirm("Delete this inquiry? This can't be undone.")) return;
-          startTransition(() => deleteInquiryAction(inquiry.id));
-        }}
-      >
-        Delete
-      </Button>
+      {canDelete ? (
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            if (!window.confirm("Delete this inquiry? This can't be undone.")) return;
+            startTransition(() => deleteInquiryAction(inquiry.id));
+          }}
+        >
+          Delete
+        </Button>
+      ) : null}
     </div>
   );
 }

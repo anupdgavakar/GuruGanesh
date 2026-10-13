@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { adminApiFetch } from "@/lib/api/client";
+import { getCurrentUser } from "@/lib/api/auth";
+import { hasPermission, type Permission } from "@/lib/permissions";
 import type {
   ApiListResponse,
   ApiPaginatedListResponse,
@@ -141,6 +143,13 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle?: string 
 }
 
 export default async function DashboardHomePage() {
+  // Each section is only fetched (and shown) for roles that may open it, so a
+  // salesperson's dashboard has no catalog numbers and no failed requests.
+  const user = await getCurrentUser();
+  const can = (permission: Permission) => hasPermission(user, permission);
+  const gate = <T,>(permission: Permission, load: () => Promise<T>, fallback: T): Promise<T> =>
+    can(permission) ? load() : Promise.resolve(fallback);
+
   const [
     products,
     activeProducts,
@@ -156,43 +165,43 @@ export default async function DashboardHomePage() {
     recentOrders,
     recentInquiries,
   ] = await Promise.all([
-    safeCount(
+    gate("catalog", () => safeCount(
       adminApiFetch<ApiPaginatedListResponse<Product>>("/api/products?include_inactive=1&per_page=1").then(
         (r) => r.data,
       ),
-    ),
-    safeCount(adminApiFetch<ApiPaginatedListResponse<Product>>("/api/products?per_page=1").then((r) => r.data)),
-    safeCount(adminApiFetch<ApiListResponse<ProductCategory>>("/api/categories").then((r) => r.data)),
-    safeCount(
+    ), null),
+    gate("catalog", () => safeCount(adminApiFetch<ApiPaginatedListResponse<Product>>("/api/products?per_page=1").then((r) => r.data)), null),
+    gate("catalog", () => safeCount(adminApiFetch<ApiListResponse<ProductCategory>>("/api/categories").then((r) => r.data)), null),
+    gate("catalog", () => safeCount(
       adminApiFetch<ApiListResponse<ProductCategory>>("/api/product-subcategories").then((r) => r.data),
-    ),
-    safeCount(adminApiFetch<ApiListResponse<Brand>>("/api/brands?include_inactive=1").then((r) => r.data)),
-    safeCount(
+    ), null),
+    gate("catalog", () => safeCount(adminApiFetch<ApiListResponse<Brand>>("/api/brands?include_inactive=1").then((r) => r.data)), null),
+    gate("orders", () => safeCount(
       adminApiFetch<ApiPaginatedListResponse<Order>>("/api/orders?status=pending_review&per_page=1").then(
         (r) => r.data,
       ),
-    ),
-    safeCount(adminApiFetch<ApiPaginatedListResponse<Order>>("/api/orders?per_page=1").then((r) => r.data)),
-    safeCount(
+    ), null),
+    gate("orders", () => safeCount(adminApiFetch<ApiPaginatedListResponse<Order>>("/api/orders?per_page=1").then((r) => r.data)), null),
+    gate("inquiries", () => safeCount(
       adminApiFetch<ApiPaginatedListResponse<ContactInquiry>>("/api/inquiries?status=new&per_page=1").then(
         (r) => r.data,
       ),
-    ),
-    safeCount(
+    ), null),
+    gate("content", () => safeCount(
       adminApiFetch<ApiPaginatedListResponse<Blog>>("/api/blogs?include_drafts=1&per_page=1").then((r) => r.data),
-    ),
-    safeCount(adminApiFetch<ApiListResponse<Service>>("/api/services?include_inactive=1").then((r) => r.data)),
-    safeCount(
+    ), null),
+    gate("content", () => safeCount(adminApiFetch<ApiListResponse<Service>>("/api/services?include_inactive=1").then((r) => r.data)), null),
+    gate("content", () => safeCount(
       adminApiFetch<ApiListResponse<Testimonial>>("/api/testimonials?include_inactive=1").then((r) => r.data),
-    ),
-    safeList(
+    ), null),
+    gate("orders", () => safeList(
       adminApiFetch<ApiPaginatedListResponse<Order>>("/api/orders?per_page=5").then((r) => r.data.data),
-    ),
-    safeList(
+    ), []),
+    gate("inquiries", () => safeList(
       adminApiFetch<ApiPaginatedListResponse<ContactInquiry>>("/api/inquiries?per_page=5").then(
         (r) => r.data.data,
       ),
-    ),
+    ), []),
   ]);
 
   const catalogStats: { label: string; value: number | null; href: string; icon: IconKey; tone: string }[] = [
@@ -204,9 +213,15 @@ export default async function DashboardHomePage() {
   ];
 
   const customerStats: { label: string; value: number | null; href: string; icon: IconKey; tone: string }[] = [
-    { label: "Total orders", value: totalOrders, href: "/orders", icon: "cart", tone: "from-brand-600 to-accent-700" },
-    { label: "Orders to review", value: pendingOrders, href: "/orders?status=pending_review", icon: "cart", tone: "from-warning to-brand-600" },
-    { label: "New inquiries", value: newInquiries, href: "/inquiries?status=new", icon: "inbox", tone: "from-accent-500 to-accent-700" },
+    ...(can("orders")
+      ? [
+          { label: "Total orders", value: totalOrders, href: "/orders", icon: "cart" as IconKey, tone: "from-brand-600 to-accent-700" },
+          { label: "Orders to review", value: pendingOrders, href: "/orders?status=pending_review", icon: "cart" as IconKey, tone: "from-warning to-brand-600" },
+        ]
+      : []),
+    ...(can("inquiries")
+      ? [{ label: "New inquiries", value: newInquiries, href: "/inquiries?status=new", icon: "inbox" as IconKey, tone: "from-accent-500 to-accent-700" }]
+      : []),
   ];
 
   const contentStats: { label: string; value: number | null; href: string; icon: IconKey; tone: string }[] = [
@@ -216,9 +231,9 @@ export default async function DashboardHomePage() {
   ];
 
   const quickActions: { label: string; href: string }[] = [
-    { label: "Review orders", href: "/orders" },
-    { label: "Add a product", href: "/products/new" },
-    { label: "Review inquiries", href: "/inquiries" },
+    ...(can("orders") ? [{ label: "Review orders", href: "/orders" }] : []),
+    ...(can("catalog") ? [{ label: "Add a product", href: "/products/new" }] : []),
+    ...(can("inquiries") ? [{ label: "Review inquiries", href: "/inquiries" }] : []),
   ];
 
   return (
@@ -248,6 +263,7 @@ export default async function DashboardHomePage() {
         </div>
       </div>
 
+      {can("catalog") && (
       <div>
         <SectionHeading title="Catalog" subtitle="Products, categories and brands" />
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5">
@@ -256,7 +272,9 @@ export default async function DashboardHomePage() {
           ))}
         </div>
       </div>
+      )}
 
+      {customerStats.length > 0 && (
       <div>
         <SectionHeading title="Customers" subtitle="Orders and contact inquiries" />
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
@@ -265,7 +283,9 @@ export default async function DashboardHomePage() {
           ))}
         </div>
       </div>
+      )}
 
+      {can("content") && (
       <div>
         <SectionHeading title="Content" subtitle="What's shown on the public site" />
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
@@ -274,8 +294,10 @@ export default async function DashboardHomePage() {
           ))}
         </div>
       </div>
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {can("orders") && (
         <div className="rounded-card border border-ink-200 bg-white shadow-card">
           <div className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
             <h2 className="font-display text-base font-semibold text-ink-900">Recent orders</h2>
@@ -307,7 +329,9 @@ export default async function DashboardHomePage() {
             ))}
           </div>
         </div>
+        )}
 
+        {can("inquiries") && (
         <div className="rounded-card border border-ink-200 bg-white shadow-card">
           <div className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
             <h2 className="font-display text-base font-semibold text-ink-900">Recent inquiries</h2>
@@ -339,6 +363,7 @@ export default async function DashboardHomePage() {
             ))}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

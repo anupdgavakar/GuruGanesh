@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import { adminApiFetch, AdminApiError } from "@/lib/api/client";
 import type { ApiResource, Order } from "@/lib/api/types";
+import { HandlingSection } from "@/components/handling/handling-section";
+import { getCurrentUser } from "@/lib/api/auth";
+import { hasPermission } from "@/lib/permissions";
 import { OrderActions } from "@/components/orders/order-actions";
+import { OrderItemDesign } from "@/components/orders/order-item-design";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { formatDate, formatPrice } from "@/lib/utils";
 
@@ -21,8 +25,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   if (!order) notFound();
 
+  const user = await getCurrentUser();
+
   return (
-    <div className="flex max-w-2xl flex-col gap-5">
+    <div className="flex max-w-3xl flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-semibold text-ink-900">Order #{order.id}</h1>
@@ -69,14 +75,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </h2>
         <ul className="mt-3 flex flex-col divide-y divide-ink-100">
           {order.items.map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-ink-900">{item.product_name}</p>
-                <p className="text-xs text-ink-500">
-                  {formatPrice(item.unit_price)} × {item.quantity}
-                </p>
+            <li key={item.id} className="flex flex-col gap-2 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-ink-900">{item.product_name}</p>
+                  <p className="text-xs text-ink-500">
+                    {formatPrice(item.unit_price)} × {item.quantity}
+                  </p>
+                </div>
+                <p className="text-sm font-semibold text-ink-900">{formatPrice(item.line_total)}</p>
               </div>
-              <p className="text-sm font-semibold text-ink-900">{formatPrice(item.line_total)}</p>
+              <OrderItemDesign item={item} />
             </li>
           ))}
         </ul>
@@ -89,7 +98,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </p>
       </div>
 
-      <OrderActions order={order} />
+      <HandlingSection
+        kind="orders"
+        id={order.id}
+        assignee={order.assignee}
+        assignedAt={order.assigned_at}
+        createdAt={order.created_at}
+        activities={order.activities}
+        receivedLabel="Order placed by the customer"
+      />
+
+      <OrderActions order={order} canDelete={hasPermission(user, "delete_records")} />
     </div>
   );
 }

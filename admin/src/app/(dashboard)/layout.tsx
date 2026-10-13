@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/api/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { navGroupsFor } from "@/components/layout/nav-config";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // The middleware only checks that a session cookie exists. This is the
@@ -16,7 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex h-full">
-      <Sidebar />
+      <Sidebar groups={navGroupsFor(user.permissions)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} />
         <main className="flex-1 overflow-y-auto bg-ink-50 p-6">{children}</main>

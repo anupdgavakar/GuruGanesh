@@ -23,6 +23,7 @@ class SubcategoryRequest extends FormRequest
             'slug' => ['required', 'string', 'max:255', Rule::unique('product_subcategories', 'slug')->ignore($id)],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
+            'image' => ['nullable', 'image', 'max:15360'],
         ];
     }
 }

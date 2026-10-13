@@ -13,7 +13,7 @@ const statuses: { value: OrderStatus; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-export function OrderActions({ order }: { order: Order }) {
+export function OrderActions({ order, canDelete }: { order: Order; canDelete: boolean }) {
   const [pending, startTransition] = useTransition();
 
   return (
@@ -29,17 +29,19 @@ export function OrderActions({ order }: { order: Order }) {
           {status.label}
         </Button>
       ))}
-      <Button
-        variant="danger"
-        size="sm"
-        disabled={pending}
-        onClick={() => {
-          if (!window.confirm(`Delete order #${order.id}? This can't be undone.`)) return;
-          startTransition(() => deleteOrderAction(order.id));
-        }}
-      >
-        Delete
-      </Button>
+      {canDelete ? (
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            if (!window.confirm(`Delete order #${order.id}? This can't be undone.`)) return;
+            startTransition(() => deleteOrderAction(order.id));
+          }}
+        >
+          Delete
+        </Button>
+      ) : null}
     </div>
   );
 }

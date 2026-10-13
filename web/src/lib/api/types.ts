@@ -61,6 +61,9 @@ export interface ProductCategory {
   id: number;
   name: string;
   slug: string;
+  image_url?: string | null;
+  show_in_menu?: boolean;
+  menu_order?: number;
   meta_title: string | null;
   meta_description: string | null;
   subcategories?: ProductSubcategory[];
@@ -73,6 +76,8 @@ export interface ProductSubcategory {
   slug: string;
   meta_title: string | null;
   meta_description: string | null;
+  /** Optional thumbnail shown next to this subcategory in the header's category dropdown. */
+  image_url: string | null;
 }
 
 export interface ProductLookup {
@@ -92,6 +97,10 @@ export interface Product {
   max_quantity: number | null;
   status: boolean;
   is_featured: boolean;
+  /** Only meaningful when is_featured — custom copy for the homepage promo card. Falls back to name/price/images when blank. */
+  banner_headline: string | null;
+  banner_subtext: string | null;
+  banner_image_url: string | null;
   category_id: number;
   subcategory_id: number | null;
   design_mode_id: number | null;
@@ -173,13 +182,34 @@ export interface ContactInquiryPayload {
   website?: string;
 }
 
+/** How a customer is getting us the artwork for one order line item. */
+export type DesignDeliveryMethod = "link" | "email" | "upload";
+
+/** The small whitelist of site settings GET /settings exposes publicly. */
+export interface SiteSettings {
+  design_submission_email: string;
+}
+
+/** Response shape from POST /design-files. */
+export interface DesignFileUploadResult {
+  design_reference: string;
+  design_original_filename: string;
+}
+
 export interface OrderPayload {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
   shipping_address?: string;
   notes?: string;
-  items: { product_id: number; quantity: number }[];
+  items: {
+    product_id: number;
+    quantity: number;
+    design_delivery_method?: DesignDeliveryMethod;
+    /** A pasted share link (method "link") or the storage path from POST /design-files (method "upload"). */
+    design_reference?: string;
+    design_original_filename?: string;
+  }[];
   /** Honeypot — must stay empty. Never shown to real users. */
   website?: string;
 }
@@ -192,6 +222,9 @@ export interface OrderItem {
   unit_price: string;
   quantity: number;
   line_total: string;
+  design_delivery_method: DesignDeliveryMethod | null;
+  design_reference: string | null;
+  design_original_filename: string | null;
 }
 
 export interface Order {
@@ -205,4 +238,12 @@ export interface Order {
   status: string;
   items: OrderItem[];
   created_at: string;
+}
+
+/** A logged-in customer (phone + OTP account — see /login). */
+export interface CustomerUser {
+  id: number;
+  name: string;
+  phone: string | null;
+  role: "admin" | "staff" | "customer";
 }

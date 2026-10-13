@@ -10,7 +10,16 @@ type Status = "idle" | "submitting" | "success" | "error";
 const inputClasses =
   "w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm text-ink-900 placeholder:text-ink-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200";
 
-export function ContactForm() {
+export function ContactForm({
+  defaultSubject,
+  defaultMessage,
+  priceRequest = false,
+}: {
+  defaultSubject?: string;
+  defaultMessage?: string;
+  /** A price request needs a phone number so we can call back with the price. */
+  priceRequest?: boolean;
+}) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -45,8 +54,8 @@ export function ContactForm() {
   if (status === "success") {
     return (
       <div className="rounded-2xl border border-brand-200 bg-brand-50 p-8 text-center">
-        <p className="font-display text-lg font-bold text-ink-900">Thanks — message sent!</p>
-        <p className="mt-2 text-sm text-ink-700">We&apos;ll get back to you shortly.</p>
+        <p className="font-display text-lg font-bold text-ink-900">{priceRequest ? "Thanks — we've got your request!" : "Thanks — message sent!"}</p>
+        <p className="mt-2 text-sm text-ink-700">{priceRequest ? "We'll call or email you with the price shortly." : "We'll get back to you shortly."}</p>
         <Button variant="outline" className="mt-4" onClick={() => setStatus("idle")}>
           Send another message
         </Button>
@@ -74,15 +83,15 @@ export function ContactForm() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-ink-700">
-            Phone <span className="text-ink-400">(optional)</span>
+            Phone {priceRequest ? null : <span className="text-ink-400">(optional)</span>}
           </label>
-          <input id="phone" name="phone" type="tel" className={inputClasses} />
+          <input id="phone" name="phone" type="tel" required={priceRequest} className={inputClasses} />
         </div>
         <div>
           <label htmlFor="subject" className="mb-1.5 block text-sm font-medium text-ink-700">
             Subject <span className="text-ink-400">(optional)</span>
           </label>
-          <input id="subject" name="subject" type="text" className={inputClasses} />
+          <input id="subject" name="subject" type="text" defaultValue={defaultSubject} className={inputClasses} />
         </div>
       </div>
 
@@ -90,7 +99,7 @@ export function ContactForm() {
         <label htmlFor="message" className="mb-1.5 block text-sm font-medium text-ink-700">
           Message
         </label>
-        <textarea id="message" name="message" required rows={5} className={inputClasses} />
+        <textarea id="message" name="message" required rows={5} defaultValue={defaultMessage} className={inputClasses} />
       </div>
 
       {/* Honeypot — hidden from sighted users, off the tab order; bots that fill every field trip it. */}
@@ -102,7 +111,7 @@ export function ContactForm() {
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <Button type="submit" size="lg" disabled={status === "submitting"} className="w-full sm:w-auto">
-        {status === "submitting" ? "Sending…" : "Send message"}
+        {status === "submitting" ? "Sending…" : priceRequest ? "Send price request" : "Send message"}
       </Button>
     </form>
   );

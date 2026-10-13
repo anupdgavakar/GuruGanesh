@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/lib/cart/cart-context";
-import { formatPrice } from "@/lib/utils";
+import { formatPriceOrQuote, stepQuantityDown, stepQuantityUp } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { Product } from "@/lib/api/types";
 
@@ -42,18 +42,18 @@ export function AddToCartPanel({ product, categorySlug }: { product: Product; ca
           <div className="mt-1.5 flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setQuantity((q) => Math.max(product.min_quantity, q - 1))}
+              onClick={() => setQuantity((q) => stepQuantityDown(q, product.min_quantity))}
+              aria-label="Decrease quantity"
               disabled={!canDecrease}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-700 transition-colors hover:bg-ink-50 disabled:opacity-30"
             >
               −
             </button>
-            <span className="w-10 text-center font-display text-lg font-bold text-ink-900">{quantity}</span>
+            <span className="min-w-14 text-center font-display text-lg font-bold text-ink-900">{quantity}</span>
             <button
               type="button"
-              onClick={() =>
-                setQuantity((q) => (product.max_quantity ? Math.min(product.max_quantity, q + 1) : q + 1))
-              }
+              onClick={() => setQuantity((q) => stepQuantityUp(q, product.min_quantity, product.max_quantity))}
+              aria-label="Increase quantity"
               disabled={!canIncrease}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-700 transition-colors hover:bg-ink-50 disabled:opacity-30"
             >
@@ -63,7 +63,7 @@ export function AddToCartPanel({ product, categorySlug }: { product: Product; ca
         </div>
         <div className="text-right">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Total</p>
-          <p className="mt-1 font-display text-xl font-bold text-ink-900">{formatPrice(unitPrice * quantity)}</p>
+          <p className="mt-1 font-display text-xl font-bold text-ink-900">{formatPriceOrQuote(unitPrice, quantity)}</p>
         </div>
       </div>
 

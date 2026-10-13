@@ -23,7 +23,7 @@ export function Topbar({ user }: { user: AdminUser }) {
           </span>
           <div className="text-right">
             <p className="text-sm font-medium text-ink-900">{user.name}</p>
-            <p className="text-xs capitalize text-ink-500">{user.role}</p>
+            <p className="text-xs text-ink-500">{user.role_name}</p>
           </div>
         </div>
         <form action={logoutAction}>

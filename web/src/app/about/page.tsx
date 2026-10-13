@@ -27,12 +27,8 @@ export default function AboutPage() {
 
         <div className="mt-8 max-w-2xl space-y-4 text-ink-700">
           <p>
-            We started as a neighborhood print shop and grew into an online-first printing partner, without losing
-            the part that mattered: getting the details right, every single order.
-          </p>
-          <p>
-            This page is placeholder copy pending Phase 0&apos;s final brand story — replace it with the real
-            company history, mission and photos once they&apos;re ready.
+            Send us what you need — a single run of cards or a full branding rollout — and we&apos;ll help with the
+            design, print it carefully and get it to you. Call us or write in and we&apos;ll take it from there.
           </p>
         </div>
 

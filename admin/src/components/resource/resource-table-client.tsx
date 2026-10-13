@@ -1,5 +1,4 @@
 "use client";
-// REVERT-TEST-1790147705
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -13,6 +12,19 @@ import { ChevronDownIcon, PencilIcon, SearchIcon, XIcon } from "./resource-icons
 import type { RelationOption } from "./resource-table";
 
 const ALL = "all";
+const DEFAULT_PAGE_SIZE = 20;
+
+/** Page numbers to show: always first/last, a window around the current page, "…" for gaps. */
+function pageList(current: number, total: number): (number | "gap")[] {
+  const keep = new Set([1, total, current - 1, current, current + 1]);
+  const nums = [...keep].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const out: (number | "gap")[] = [];
+  nums.forEach((n, i) => {
+    if (i > 0 && n - nums[i - 1] > 1) out.push("gap");
+    out.push(n);
+  });
+  return out;
+}
 
 function Select({
   value,
@@ -50,6 +62,7 @@ export function ResourceTableClient({
   const [relationValue, setRelationValue] = useState(ALL);
   const [statusValue, setStatusValue] = useState(ALL);
   const [featuredValue, setFeaturedValue] = useState(ALL);
+  const [page, setPage] = useState(1);
 
   const searchableKeys = useMemo(
     () => config.columns.filter((col) => !col.type || col.type === "text").map((col) => col.key),
@@ -94,6 +107,24 @@ export function ResourceTableClient({
 
   const hasActiveFilters =
     query.trim() !== "" || relationValue !== ALL || statusValue !== ALL || featuredValue !== ALL;
+
+  // Any filter/search change makes the current page number meaningless — back to page 1.
+  // (Adjusting state during render, per React's own guidance, rather than in a
+  // useEffect — an effect here would cause an extra, avoidable re-render.)
+  const filterKey = `${query}\u0000${relationValue}\u0000${statusValue}\u0000${featuredValue}`;
+  const [settledFilterKey, setSettledFilterKey] = useState(filterKey);
+  if (filterKey !== settledFilterKey) {
+    setSettledFilterKey(filterKey);
+    setPage(1);
+  }
+
+  const PAGE_SIZE = config.pageSize ?? DEFAULT_PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => filteredRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredRows, currentPage, PAGE_SIZE],
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -203,7 +234,7 @@ export function ResourceTableClient({
                 </td>
               </tr>
             )}
-            {filteredRows.map((row) => {
+            {pagedRows.map((row) => {
               const recordKeyValue = String(row[config.recordKey]);
               const label = rowLabel(row, config.recordKey);
 
@@ -243,6 +274,54 @@ export function ResourceTableClient({
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+          <p className="text-sm text-ink-500">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredRows.length)} of{" "}
+            {filteredRows.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="rounded-lg border border-ink-200 px-3 py-1.5 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            {pageList(currentPage, totalPages).map((p, i) =>
+              p === "gap" ? (
+                <span key={`gap-${i}`} className="px-1 text-sm text-ink-400">
+                  …
+                </span>
+              ) : (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPage(p)}
+                  aria-current={p === currentPage ? "page" : undefined}
+                  className={
+                    p === currentPage
+                      ? "h-8 min-w-8 rounded-lg bg-accent-600 px-2 text-sm font-semibold text-white"
+                      : "h-8 min-w-8 rounded-lg border border-ink-200 px-2 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50"
+                  }
+                >
+                  {p}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded-lg border border-ink-200 px-3 py-1.5 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

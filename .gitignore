@@ -1,3 +1,18 @@
+# ---------------------------------------------------------------------------
+# Only the three apps and a few top-level docs belong in git. Everything else
+# in this folder (product photo folders, spreadsheets, helper scripts, logos,
+# test reports) is working material and stays on your computer.
+# ---------------------------------------------------------------------------
+/*
+!/.gitignore
+!/README.md
+!/DEPLOYMENT.md
+!/admin/
+!/api/
+!/web/
+!/deploy/
+!/assets/
+
 # Dependencies
 **/node_modules/
 **/vendor/
@@ -25,10 +40,21 @@
 **/Homestead.yaml
 **/auth.json
 
+# The live database and uploaded customer files — never in git
+/api/guruganesh
+**/*.sqlite
+**/*.sqlite3
+**/storage/app/private/*
+!**/storage/app/private/.gitignore
+
 # Environment / secrets — never commit these
 **/.env
 **/.env.*
 !**/.env.example
+
+# Stray files
+**/,
+**/nul*
 
 # Logs
 **/*.log

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import { navGroups, type NavIcon } from "./nav-config";
+import type { NavGroup, NavIcon } from "./nav-config";
 import { cn } from "@/lib/utils";
 
 const icons: Record<NavIcon, React.ReactNode> = {
@@ -92,6 +92,19 @@ const icons: Record<NavIcon, React.ReactNode> = {
       <path d="M2.5 3h2.5l2.5 12.5h10.5l2-9H6.5" />
     </>
   ),
+  users: (
+    <>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M2.8 20a6.2 6.2 0 0112.4 0" />
+      <path d="M16 5.2a3.2 3.2 0 010 5.6M18 14.3a6.2 6.2 0 013.2 5.7" />
+    </>
+  ),
+  gear: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+    </>
+  ),
 };
 
 function NavGlyph({ icon }: { icon: NavIcon }) {
@@ -102,7 +115,7 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ groups }: { groups: NavGroup[] }) {
   const pathname = usePathname();
 
   return (
@@ -120,7 +133,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {navGroups.map((group) => (
+        {groups.map((group) => (
           <div key={group.label} className="mb-5">
             <p className="px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-300">
               {group.label}

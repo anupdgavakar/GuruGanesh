@@ -25,8 +25,8 @@ class ServiceRequest extends FormRequest
             'status' => ['boolean'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
-            'icon' => ['nullable', 'image', 'max:1024'],
-            'image' => ['nullable', 'image', 'max:4096'],
+            'icon' => ['nullable', 'image', 'max:15360'],
+            'image' => ['nullable', 'image', 'max:15360'],
         ];
     }
 }

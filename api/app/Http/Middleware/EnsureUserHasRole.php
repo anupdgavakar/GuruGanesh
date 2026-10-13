@@ -18,7 +18,7 @@ class EnsureUserHasRole
     {
         $user = $request->user();
 
-        if (! $user || ! in_array($user->role?->value, $roles, true)) {
+        if (! $user || ! in_array($user->role, $roles, true)) {
             abort(403, 'You do not have permission to perform this action.');
         }
 

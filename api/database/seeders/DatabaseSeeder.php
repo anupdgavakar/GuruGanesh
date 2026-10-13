@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@guruganeshgraphics.com',
-            'password' => Hash::make('change-me-immediately'),
+            'password' => Hash::make('123456789'),
             'role' => UserRole::Admin,
         ]);
 
@@ -50,7 +50,13 @@ class DatabaseSeeder extends Seeder
         // built around. Kept in its own seeder since it's the bulk of the
         // data; must run after the lookup tables above, since it assigns
         // products to their ids.
-        $this->call(CatalogSeeder::class);
+        //
+        // Phase 1 of 2 (see database/seeders/CatalogPhaseOneSeeder.php for
+        // which categories and why) — the owner's full 26-category catalog
+        // is being rolled out in two batches. CatalogPhaseTwoSeeder (the
+        // remaining categories: apparel, gifting, wedding/event, and
+        // vertical-specific printing) is a follow-up, not yet written.
+        $this->call(CatalogPhaseOneSeeder::class);
 
         Brand::factory()->count(3)->create();
         Testimonial::factory()->count(5)->create();

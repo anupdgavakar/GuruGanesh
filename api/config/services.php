@@ -41,4 +41,15 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'otp' => [
+        // No SMS gateway is wired up yet (see App\Services\SmsService), so
+        // while this is true, POST /auth/otp/request echoes the generated
+        // code back in its response and POST /auth/otp/skip (registration
+        // with no code at all) is reachable — both purely so the
+        // registration flow can be tested end-to-end today. Set to false
+        // the moment a real gateway is subscribed to and wired into
+        // SmsService::send() — that alone turns off both of those.
+        'test_mode' => (bool) env('OTP_TEST_MODE', true),
+    ],
+
 ];

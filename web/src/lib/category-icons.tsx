@@ -61,6 +61,60 @@ const iconPaths: { match: RegExp; path: React.ReactNode }[] = [
       </>
     ),
   },
+  {
+    match: /stationery|letterhead|envelope/i,
+    path: (
+      <>
+        <path d="M3 6h18v13H3z" />
+        <path d="M3 6l9 7 9-7" />
+      </>
+    ),
+  },
+  {
+    match: /notebook|diar|writing|pen\b/i,
+    path: (
+      <>
+        <path d="M6 3h13v18H6z" />
+        <path d="M3 6h3M3 10h3M3 14h3M3 18h3" />
+      </>
+    ),
+  },
+  {
+    match: /stamp|seal|emboss/i,
+    path: (
+      <>
+        <rect x="7" y="13" width="10" height="7" rx="1" />
+        <path d="M9 13V9a3 3 0 016 0v4" />
+        <path d="M5 20h14" />
+      </>
+    ),
+  },
+  {
+    match: /branding|corporate/i,
+    path: (
+      <>
+        <path d="M12 2l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" />
+      </>
+    ),
+  },
+  {
+    match: /calendar/i,
+    path: (
+      <>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4" />
+      </>
+    ),
+  },
+  {
+    match: /coaster|table/i,
+    path: (
+      <>
+        <circle cx="12" cy="12" r="8" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ),
+  },
 ];
 
 const fallbackPath = (

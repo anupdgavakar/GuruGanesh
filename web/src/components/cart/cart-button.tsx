@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/lib/cart/cart-context";
-import { formatPrice } from "@/lib/utils";
+import { formatPriceOrQuote, formatSubtotal, stepQuantityDown, stepQuantityUp } from "@/lib/utils";
 import { ButtonLink } from "@/components/ui/button";
 
 export function CartButton() {
@@ -64,7 +64,7 @@ export function CartButton() {
                   <li key={item.productId} className="flex gap-3">
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-paper-muted">
                       {item.thumbnailUrl ? (
-                        <Image src={item.thumbnailUrl} alt="" fill sizes="56px" className="object-cover" unoptimized />
+                        <Image src={item.thumbnailUrl} alt="" fill sizes="56px" className="object-cover" />
                       ) : null}
                     </div>
                     <div className="flex flex-1 flex-col gap-1">
@@ -85,7 +85,7 @@ export function CartButton() {
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                            onClick={() => updateQuantity(item.productId, stepQuantityDown(item.quantity, item.minQuantity))}
                             disabled={item.quantity <= item.minQuantity}
                             className="flex h-6 w-6 items-center justify-center rounded-full border border-ink-200 text-ink-600 disabled:opacity-30"
                           >
@@ -94,7 +94,7 @@ export function CartButton() {
                           <span className="w-6 text-center text-xs font-semibold text-ink-900">{item.quantity}</span>
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.productId, stepQuantityUp(item.quantity, item.minQuantity, item.maxQuantity))}
                             disabled={item.maxQuantity !== null && item.quantity >= item.maxQuantity}
                             className="flex h-6 w-6 items-center justify-center rounded-full border border-ink-200 text-ink-600 disabled:opacity-30"
                           >
@@ -102,7 +102,7 @@ export function CartButton() {
                           </button>
                         </div>
                         <p className="text-xs font-semibold text-ink-900">
-                          {formatPrice(item.unitPrice * item.quantity)}
+                          {formatPriceOrQuote(item.unitPrice, item.quantity)}
                         </p>
                       </div>
                     </div>
@@ -112,7 +112,7 @@ export function CartButton() {
 
               <div className="mt-4 flex items-center justify-between border-t border-ink-100 pt-3 text-sm">
                 <span className="text-ink-500">Subtotal</span>
-                <span className="font-bold text-ink-900">{formatPrice(subtotal)}</span>
+                <span className="font-bold text-ink-900">{formatSubtotal(subtotal)}</span>
               </div>
 
               <ButtonLink

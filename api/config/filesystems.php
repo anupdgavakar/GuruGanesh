@@ -60,6 +60,33 @@ return [
             'report' => false,
         ],
 
+        // Where customers' uploaded design files (artwork for print jobs)
+        // live. Private and never on the 'public' disk — these aren't
+        // product photos, they're a customer's own files, so nothing here
+        // gets a guessable public URL; DesignFileController::download is
+        // the only way to read one back, and it's admin/staff-only.
+        //
+        // Defaults to local disk storage under storage/app/private, which
+        // works today with zero extra setup. To move these to Amazon S3
+        // (or an S3-compatible service) once that's set up, this disk only
+        // needs env changes — no code changes: set DESIGN_FILES_DRIVER=s3
+        // and fill in the same AWS_* values the 's3' disk above already
+        // reads, then `composer require league/flysystem-aws-s3-v3`.
+        'design_files' => [
+            'driver' => env('DESIGN_FILES_DRIVER', 'local'),
+            'root' => storage_path('app/private/design-files'),
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'url' => env('AWS_URL'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

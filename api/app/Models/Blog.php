@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Support\HtmlSanitizer;
 use Illuminate\Support\Facades\Storage;
 
 class Blog extends Model
@@ -30,6 +31,16 @@ class Blog extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    // Posts saved as plain text (before the styled editor) are turned into
+    // headings, paragraphs and lists when read, so the website and the admin
+    // editor both show them properly. Posts already in HTML are untouched.
+    protected function content(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => HtmlSanitizer::isPlainText($value) ? HtmlSanitizer::clean($value) : $value,
+        );
     }
 
     protected function thumbnailUrl(): Attribute

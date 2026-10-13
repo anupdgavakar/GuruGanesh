@@ -48,6 +48,12 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
       { name: "slug", label: "Slug", type: "text", required: true, helpText: "Used in the public product URL." },
       { name: "description", label: "Description", type: "textarea" },
       { name: "base_price", label: "Base price (₹)", type: "decimal", required: true },
+      {
+        name: "price_on_request",
+        label: "Ask for price (hide this product's price on the website)",
+        type: "boolean",
+        helpText: "When on, customers see \"Ask for price\" instead of the price and send you a price request. You still enter the real price above for your own records.",
+      },
       { name: "min_quantity", label: "Minimum quantity", type: "number", required: true },
       { name: "max_quantity", label: "Maximum quantity", type: "number" },
       {
@@ -55,13 +61,35 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
         label: "Homepage featured product",
         type: "boolean",
         helpText:
-          "Shows this product in the homepage hero slider and the featured products grid. Keep the total at 2 or 4 (max 4) for a balanced slider — avoid leaving it at 1 or 3.",
+          "Shows this product as one of the big promotional cards on the homepage (below the hero slider, which is managed separately under Homepage Slides). Keep the total at 2 or 4 (max 4) for a balanced layout — avoid leaving it at 1 or 3.",
+      },
+      {
+        name: "banner_headline",
+        label: "Homepage banner headline",
+        type: "text",
+        helpText:
+          "Only used when this product is homepage featured — the bold headline on its homepage promo card (e.g. \"Make Every Connection Count\"). Leave blank to just show the product name.",
+      },
+      {
+        name: "banner_subtext",
+        label: "Homepage banner subtext",
+        type: "textarea",
+        helpText: "The short line under the headline. Leave blank to fall back to a generic price line.",
       },
       { name: "status", label: "Active (visible on the site)", type: "boolean" },
       { name: "meta_title", label: "Meta title", type: "text" },
       { name: "meta_description", label: "Meta description", type: "textarea" },
       { name: "thumbnail", label: "Thumbnail image", type: "file", accept: "image/*", currentUrlField: "thumbnail_url" },
       { name: "header_image", label: "Header image", type: "file", accept: "image/*", currentUrlField: "header_image_url" },
+      {
+        name: "banner_image",
+        label: "Homepage banner image",
+        type: "file",
+        accept: "image/*",
+        currentUrlField: "banner_image_url",
+        helpText:
+          "Used on the homepage promo card when this product is featured. Falls back to the header image, then the thumbnail, if left blank.",
+      },
     ],
   },
 
@@ -71,14 +99,39 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     singularLabel: "Category",
     endpoint: "categories",
     paginated: false,
+    pageSize: 10,
     recordKey: "id",
     columns: [
+      { key: "image_url", label: "", type: "image" },
       { key: "name", label: "Name" },
       { key: "slug", label: "Slug" },
+      { key: "show_in_menu", label: "In header menu", type: "boolean" },
+      { key: "menu_order", label: "Menu order" },
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
       { name: "slug", label: "Slug", type: "text", required: true },
+      {
+        name: "show_in_menu",
+        label: "Show in the header menu bar",
+        type: "boolean",
+        helpText:
+          "Only categories ticked here appear as quick links in the bar under the site header. Tick about 5 to 7 so the bar stays on one line — every category is still available under \"All categories\".",
+      },
+      {
+        name: "menu_order",
+        label: "Menu order",
+        type: "number",
+        helpText: "Lower numbers come first in the header bar and in \"All categories\" (1 = first).",
+      },
+      {
+        name: "image",
+        label: "Category image",
+        type: "file",
+        accept: "image/*",
+        currentUrlField: "image_url",
+        helpText: "Shown on the category tiles on the homepage and the Shop page. Square (1:1) images look best.",
+      },
       { name: "meta_title", label: "Meta title", type: "text" },
       { name: "meta_description", label: "Meta description", type: "textarea" },
     ],
@@ -93,6 +146,7 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     recordKey: "id",
     relationFilter: { field: "category", label: "Category" },
     columns: [
+      { key: "image_url", label: "", type: "image" },
       { key: "name", label: "Name" },
       { key: "category.name", label: "Category" },
       { key: "slug", label: "Slug" },
@@ -103,6 +157,15 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
       { name: "slug", label: "Slug", type: "text", required: true },
       { name: "meta_title", label: "Meta title", type: "text" },
       { name: "meta_description", label: "Meta description", type: "textarea" },
+      {
+        name: "image",
+        label: "Thumbnail image",
+        type: "file",
+        accept: "image/*",
+        currentUrlField: "image_url",
+        helpText:
+          "Shown next to this subcategory's name in the header's category dropdown menu on the storefront. Leave blank to just show the name with no thumbnail.",
+      },
     ],
   },
 
@@ -112,6 +175,7 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     singularLabel: "Design mode",
     endpoint: "design-modes",
     paginated: false,
+    pageSize: 10,
     recordKey: "id",
     columns: [
       { key: "name", label: "Name" },
@@ -130,6 +194,7 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     singularLabel: "Delivery option",
     endpoint: "delivery-options",
     paginated: false,
+    pageSize: 10,
     recordKey: "id",
     columns: [
       { key: "name", label: "Name" },
@@ -149,6 +214,7 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     singularLabel: "Product type",
     endpoint: "product-types",
     paginated: false,
+    pageSize: 10,
     recordKey: "id",
     columns: [
       { key: "name", label: "Name" },
@@ -166,6 +232,7 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     singularLabel: "Pricing tier",
     endpoint: "pricing-tiers",
     paginated: false,
+    pageSize: 10,
     recordKey: "id",
     columns: [
       { key: "name", label: "Name" },
@@ -185,6 +252,7 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     singularLabel: "Brand",
     endpoint: "brands",
     paginated: false,
+    pageSize: 10,
     recordKey: "id",
     supportsInactiveToggle: true,
     columns: [
@@ -206,6 +274,7 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     singularLabel: "Blog post",
     endpoint: "blogs",
     paginated: true,
+    pageSize: 10,
     recordKey: "slug",
     supportsInactiveToggle: true,
     inactiveParam: "include_drafts",
@@ -216,9 +285,9 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     ],
     fields: [
       { name: "title", label: "Title", type: "text", required: true },
-      { name: "slug", label: "Slug", type: "text", required: true },
+      { name: "slug", label: "Slug", type: "text", required: true, helpText: "The web address of the post, e.g. choose-right-paper. Spaces and capitals are tidied up automatically." },
       { name: "excerpt", label: "Excerpt", type: "textarea" },
-      { name: "content", label: "Content", type: "textarea", required: true, helpText: "HTML is allowed and rendered as rich text on the site." },
+      { name: "content", label: "Content", type: "richtext", required: true, helpText: "Write like in a document: use the buttons for headings, bold, lists and links. You can paste from Word or Google Docs." },
       { name: "status", label: "Published", type: "boolean" },
       { name: "published_at", label: "Published at", type: "date" },
       { name: "meta_title", label: "Meta title", type: "text" },
@@ -233,6 +302,7 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     singularLabel: "Testimonial",
     endpoint: "testimonials",
     paginated: false,
+    pageSize: 10,
     recordKey: "id",
     supportsInactiveToggle: true,
     columns: [
@@ -250,12 +320,66 @@ export const resourceConfigs: Record<string, ResourceConfig> = {
     ],
   },
 
+  sliders: {
+    key: "sliders",
+    label: "Homepage Slides",
+    singularLabel: "Slide",
+    endpoint: "sliders",
+    paginated: false,
+    pageSize: 10,
+    recordKey: "id",
+    supportsInactiveToggle: true,
+    columns: [
+      { key: "image_url", label: "", type: "image" },
+      { key: "title", label: "Title" },
+      { key: "sort_order", label: "Order" },
+      { key: "status", label: "Active", type: "boolean" },
+    ],
+    fields: [
+      {
+        name: "title",
+        label: "Title",
+        type: "text",
+        helpText: "The slide's heading. Leave blank to fall back to the site name.",
+      },
+      {
+        name: "subtitle",
+        label: "Subtitle",
+        type: "text",
+        helpText: "The short line shown under the title. Leave blank to omit it.",
+      },
+      {
+        name: "link_url",
+        label: "Link URL",
+        type: "text",
+        helpText:
+          "Where the \"Get more details\" button goes — a product page, a category, or any URL. Leave blank to hide that button and only show \"View all products\".",
+      },
+      {
+        name: "sort_order",
+        label: "Sort order",
+        type: "number",
+        helpText: "Lower numbers show first (0 is default). Give each slide a different number to control the order.",
+      },
+      { name: "status", label: "Active (visible on the site)", type: "boolean" },
+      {
+        name: "image",
+        label: "Slide image",
+        type: "file",
+        required: true,
+        accept: "image/*",
+        currentUrlField: "image_url",
+      },
+    ],
+  },
+
   services: {
     key: "services",
     label: "Services",
     singularLabel: "Service",
     endpoint: "services",
     paginated: false,
+    pageSize: 10,
     recordKey: "id",
     supportsInactiveToggle: true,
     columns: [

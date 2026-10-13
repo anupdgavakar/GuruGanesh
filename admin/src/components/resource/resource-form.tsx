@@ -7,6 +7,8 @@ import type { Route } from "next";
 import type { ResourceConfig, ResourceField, StaticOption } from "@/lib/resources/types";
 import type { ResourceFormState } from "@/actions/resource-actions";
 import { Button } from "@/components/ui/button";
+import { OptimizedFileInput } from "@/components/ui/optimized-file-input";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 const initialState: ResourceFormState = {};
 
@@ -32,6 +34,9 @@ function renderField(
           className={inputClass}
         />
       );
+
+    case "richtext":
+      return <RichTextEditor name={field.name} defaultValue={(currentValue as string) ?? ""} required={field.required} />;
 
     case "boolean": {
       // Unchecked boxes are simply absent from FormData — normalizeBooleans
@@ -130,10 +135,9 @@ function renderField(
               unoptimized
             />
           )}
-          <input
+          <OptimizedFileInput
             id={field.name}
             name={field.name}
-            type="file"
             accept={field.accept}
             // Required only when creating — an edit keeps the existing file
             // if nothing new is chosen.

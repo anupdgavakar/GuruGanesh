@@ -1,6 +1,7 @@
 export type FieldType =
   | "text"
   | "textarea"
+  | "richtext"
   | "number"
   | "decimal"
   | "boolean"
@@ -46,6 +47,8 @@ export interface ResourceConfig {
   /** API URI segment under /api/, e.g. "products" -> /api/products. */
   endpoint: string;
   paginated: boolean;
+  /** Rows per page in the admin list (default 20). */
+  pageSize?: number;
   /** Which record field identifies it in the API path (route model binding key). */
   recordKey: "id" | "slug";
   columns: ResourceColumn[];

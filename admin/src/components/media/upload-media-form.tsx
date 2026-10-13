@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect } from "react";
 import { uploadMediaAction } from "@/actions/media-actions";
 import type { ResourceFormState } from "@/actions/resource-actions";
 import { Button } from "@/components/ui/button";
+import { OptimizedFileInput } from "@/components/ui/optimized-file-input";
 
 const initialState: ResourceFormState = {};
 
@@ -56,7 +57,7 @@ export function UploadMediaForm() {
         <label htmlFor="file" className="text-xs font-medium text-ink-700">
           File
         </label>
-        <input id="file" name="file" type="file" required className="text-sm" />
+        <OptimizedFileInput id="file" name="file" required className="text-sm" />
       </div>
 
       <Button type="submit" disabled={pending}>

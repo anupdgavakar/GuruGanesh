@@ -51,6 +51,14 @@ async function fetchRelationOptions(config: ResourceConfig): Promise<Record<stri
   return Object.fromEntries(entries);
 }
 
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export async function ResourceFormPage({
   configKey,
   recordKeyValue,
@@ -59,17 +67,21 @@ export async function ResourceFormPage({
   recordKeyValue?: string;
 }) {
   const config = getResourceConfig(configKey);
-  const isEdit = recordKeyValue !== undefined;
+  // Next hands dynamic route params over still percent-encoded ("My%20Post"),
+  // and the fetch below encodes again, which turned a key with a space into
+  // "My%2520Post" and a false 404. Decode once, here.
+  const key = recordKeyValue === undefined ? undefined : safeDecode(recordKeyValue);
+  const isEdit = key !== undefined;
 
   const [record, relationOptions] = await Promise.all([
-    isEdit ? fetchRecord(config, recordKeyValue) : Promise.resolve(null),
+    isEdit ? fetchRecord(config, key) : Promise.resolve(null),
     fetchRelationOptions(config),
   ]);
 
   if (isEdit && record === null) notFound();
 
   const action = isEdit
-    ? updateResourceAction.bind(null, configKey, recordKeyValue)
+    ? updateResourceAction.bind(null, configKey, key)
     : createResourceAction.bind(null, configKey);
 
   return (

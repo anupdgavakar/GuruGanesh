@@ -28,12 +28,16 @@ class StoreProductRequest extends FormRequest
             'max_quantity' => ['nullable', 'integer', 'gte:min_quantity'],
             'status' => ['boolean'],
             'is_featured' => ['boolean'],
+            'price_on_request' => ['boolean'],
+            'banner_headline' => ['nullable', 'string', 'max:255'],
+            'banner_subtext' => ['nullable', 'string', 'max:500'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
-            'thumbnail' => ['nullable', 'image', 'max:2048'],
-            'header_image' => ['nullable', 'image', 'max:4096'],
+            'thumbnail' => ['nullable', 'image', 'max:15360'],
+            'header_image' => ['nullable', 'image', 'max:15360'],
+            'banner_image' => ['nullable', 'image', 'max:15360'],
             'images' => ['nullable', 'array'],
-            'images.*' => ['image', 'max:4096'],
+            'images.*' => ['image', 'max:15360'],
         ];
     }
 }

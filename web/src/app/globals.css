@@ -111,3 +111,14 @@ body {
 h1, h2, h3, h4 {
   font-family: var(--font-display), var(--font-sans), sans-serif;
 }
+
+/* Hides the scrollbar on a horizontally-scrollable track (e.g. the
+   testimonials carousel) while keeping it scrollable/swipeable — the
+   scroll-snap dots below are the intended navigation affordance. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

@@ -8,15 +8,18 @@ use App\Http\Requests\Orders\UpdateOrderStatusRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
     /**
-     * Public: submit an order (cart -> checkout, no payment gateway — see
-     * OrderRequest). Every price is recomputed here from the product's own
-     * base_price; the client only ever supplies product_id + quantity.
+     * Submit an order (cart -> checkout, no payment gateway — see
+     * OrderRequest). Requires a logged-in customer (auth:sanctum +
+     * role:customer on the route), so it's tied to $request->user(). Every
+     * price is recomputed here from the product's own base_price; the
+     * client only ever supplies product_id + quantity.
      */
     public function store(OrderRequest $request)
     {
@@ -64,6 +67,7 @@ class OrderController extends Controller
             }, '0');
 
             $order = Order::create([
+                'user_id' => $request->user()->id,
                 'customer_name' => $request->validated('customer_name'),
                 'customer_email' => $request->validated('customer_email'),
                 'customer_phone' => $request->validated('customer_phone'),
@@ -83,6 +87,9 @@ class OrderController extends Controller
                     'unit_price' => $product->base_price,
                     'quantity' => $item['quantity'],
                     'line_total' => bcmul((string) $product->base_price, (string) $item['quantity'], 2),
+                    'design_delivery_method' => $item['design_delivery_method'] ?? null,
+                    'design_reference' => $item['design_reference'] ?? null,
+                    'design_original_filename' => $item['design_original_filename'] ?? null,
                 ]);
             }
 
@@ -97,30 +104,53 @@ class OrderController extends Controller
     }
 
     /**
-     * Admin/staff only: the order queue. Newest first, optionally filtered
-     * by status — same shape as ContactInquiryController::index.
+     * Team only: the order queue. Newest first, optionally filtered by
+     * status and by handler (?assigned_to=me | none | <user id>) — same
+     * shape as ContactInquiryController::index.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $query = Order::query()->with('items')->latest();
+        $query = Order::query()->with('items', 'assignee:id,name,role')->latest();
 
-        if (request()->filled('status')) {
-            $query->where('status', request()->string('status'));
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('assigned_to')) {
+            $handler = (string) $request->string('assigned_to');
+            match (true) {
+                $handler === 'none' => $query->whereNull('assigned_to'),
+                $handler === 'me' => $query->where('assigned_to', $request->user()->id),
+                ctype_digit($handler) => $query->where('assigned_to', (int) $handler),
+                default => null,
+            };
         }
 
         return response()->json(['status' => 'success', 'data' => $query->paginate(20)]);
     }
 
-    public function show(Order $order)
+    public function show(Request $request, Order $order)
     {
-        return response()->json(['status' => 'success', 'data' => $order->load('items')]);
+        // Same rule as inquiries: the first non-admin team member to open an
+        // unassigned order becomes its handler.
+        if (! $request->user()->isAdmin()) {
+            $order->claimFor($request->user());
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $order->load('items', 'assignee:id,name,role', 'activities'),
+        ]);
     }
 
     public function updateStatus(UpdateOrderStatusRequest $request, Order $order)
     {
-        $order->update($request->validated());
+        $order->changeStatus($request->validated('status'), $request->user());
 
-        return response()->json(['status' => 'success', 'data' => $order->fresh('items')]);
+        return response()->json([
+            'status' => 'success',
+            'data' => $order->fresh(['items', 'assignee:id,name,role', 'activities']),
+        ]);
     }
 
     public function destroy(Order $order)

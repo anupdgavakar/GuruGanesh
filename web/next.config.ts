@@ -25,6 +25,12 @@ const apiPattern = apiRemotePattern();
 const nextConfig: NextConfig = {
   typedRoutes: true,
   images: {
+    // Serve pictures exactly as the API stores them (the original behaviour).
+    // Next's resizing/caching (set this to false and enable
+    // dangerouslyAllowLocalIP for local dev) needs the picture's host to
+    // match remotePatterns exactly, so it is off until that is verified
+    // against the real image URLs.
+    unoptimized: true,
     remotePatterns: [
       // Local Laravel dev server (php artisan serve default port).
       { protocol: "http", hostname: "localhost", port: "8000", pathname: "/storage/**" },

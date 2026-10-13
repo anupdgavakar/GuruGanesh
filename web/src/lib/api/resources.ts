@@ -4,16 +4,20 @@ import type {
   Blog,
   Brand,
   ContactInquiryPayload,
-  Order,
-  OrderPayload,
   PaginatedResponse,
   Product,
   ProductCategory,
   RawPaginatedResponse,
   Service,
+  SiteSettings,
   Slider,
   Testimonial,
 } from "./types";
+
+// Same fallback as the API's own Setting::DESIGN_SUBMISSION_EMAIL_DEFAULT —
+// keeps the checkout UI showing a real address even if GET /settings is
+// briefly unreachable, rather than a blank field.
+const DESIGN_SUBMISSION_EMAIL_FALLBACK = "guruganeshgraphics@gmail.com";
 
 /**
  * One function per public catalog endpoint, matching routes/api.php on the
@@ -22,12 +26,21 @@ import type {
  */
 
 export async function getSliders() {
-  const res = await apiFetchSafe<PaginatedResponse<Slider>>("/api/sliders");
+  // Short revalidate, same reasoning as getFeaturedProducts: this list is
+  // directly admin-managed (Homepage Slides), and an edit there should show
+  // up on the storefront in seconds, not the default 5 minutes.
+  const res = await apiFetchSafe<PaginatedResponse<Slider>>("/api/sliders", { revalidate: 15 });
   return res?.data ?? [];
 }
 
 export async function getCategories() {
-  const res = await apiFetchSafe<PaginatedResponse<ProductCategory>>("/api/categories");
+  // Short revalidate, same reasoning as getSliders/getFeaturedProducts:
+  // categories/subcategories now carry admin-editable content too (the
+  // subcategory thumbnail shown in the header's category dropdown), and
+  // this is fetched from the root layout — every page — so the default
+  // 5-minute cache made a just-uploaded image look broken for minutes
+  // rather than seconds.
+  const res = await apiFetchSafe<PaginatedResponse<ProductCategory>>("/api/categories", { revalidate: 15 });
   return res?.data ?? [];
 }
 
@@ -52,10 +65,13 @@ export async function getFeaturedProducts(limit = 8) {
   return res?.data.data ?? [];
 }
 
-export async function getProducts(params: { categoryId?: number; subcategoryId?: number; perPage?: number } = {}) {
+export async function getProducts(
+  params: { categoryId?: number; subcategoryId?: number; perPage?: number; search?: string } = {},
+) {
   const query = new URLSearchParams();
   if (params.categoryId) query.set("category_id", String(params.categoryId));
   if (params.subcategoryId) query.set("subcategory_id", String(params.subcategoryId));
+  if (params.search?.trim()) query.set("search", params.search.trim());
   query.set("per_page", String(params.perPage ?? 24));
 
   const res = await apiFetchSafe<RawPaginatedResponse<Product>>(`/api/products?${query.toString()}`);
@@ -74,13 +90,26 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getServices() {
-  const res = await apiFetchSafe<PaginatedResponse<Service>>("/api/services");
+  // One minute: services are admin-managed (including their pictures), so an
+  // upload should show soon, but shorter than this makes the Services page
+  // re-ask the API on almost every visit and feel slow.
+  const res = await apiFetchSafe<PaginatedResponse<Service>>("/api/services", { revalidate: 60 });
   return res?.data ?? [];
 }
 
 export async function getTestimonials(limit = 6) {
   const res = await apiFetchSafe<PaginatedResponse<Testimonial>>(`/api/testimonials?per_page=${limit}`);
   return res?.data ?? [];
+}
+
+/**
+ * Short revalidate — same reasoning as getCategories/getSliders: this is
+ * admin-editable (Settings page) and used in the cart, so a just-changed
+ * design-submission email shouldn't look stale for a full 5 minutes.
+ */
+export async function getSettings(): Promise<SiteSettings> {
+  const res = await apiFetchSafe<ApiResource<SiteSettings>>("/api/settings", { revalidate: 15 });
+  return res?.data ?? { design_submission_email: DESIGN_SUBMISSION_EMAIL_FALLBACK };
 }
 
 export async function getBrands() {
@@ -90,7 +119,7 @@ export async function getBrands() {
 
 export async function getBlogs(limit = 12) {
   // Same nested shape as /api/products — see RawPaginatedResponse.
-  const res = await apiFetchSafe<RawPaginatedResponse<Blog>>(`/api/blogs?per_page=${limit}`);
+  const res = await apiFetchSafe<RawPaginatedResponse<Blog>>(`/api/blogs?per_page=${limit}`, { revalidate: 30 });
   return res?.data.data ?? [];
 }
 
@@ -101,7 +130,7 @@ export async function getLatestBlogs(limit = 3) {
 /** A single blog post by slug, or null if it doesn't exist / API is down. */
 export async function getBlogBySlug(slug: string) {
   try {
-    const res = await apiFetch<ApiResource<Blog>>(`/api/blogs/${slug}`);
+    const res = await apiFetch<ApiResource<Blog>>(`/api/blogs/${encodeURIComponent(slug)}`, { revalidate: 30 });
     return res.data;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
@@ -123,18 +152,6 @@ export async function submitInquiry(payload: ContactInquiryPayload) {
   });
 }
 
-/**
- * Submits a cart as an order. Like submitInquiry, this throws on failure —
- * the checkout form needs to distinguish a validation error (e.g. a
- * quantity below a product's minimum) from a real failure. Pricing itself
- * is never sent — OrderController recomputes every total from the
- * product's own base_price server-side.
- */
-export async function submitOrder(payload: OrderPayload) {
-  return apiFetch<{ status: string; message: string; data: Order }>("/api/orders", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    revalidate: false,
-  });
-}
+// Order submission moved to actions/order-actions.ts#submitOrderAction —
+// checkout now requires a logged-in customer, and the Bearer token lives in
+// an httpOnly cookie only a Server Action can read (see that file).
