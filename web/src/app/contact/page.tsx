@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { ContactForm } from "@/components/sections/contact-form";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { SITE_EMAIL, SITE_PHONE_DISPLAY, SITE_PHONE_TEL } from "@/lib/site";
+import {
+  SITE_EMAIL,
+  SITE_MAP_EMBED_URL,
+  SITE_MAP_LINK,
+  SITE_PHONE_DISPLAY,
+  SITE_PHONE_TEL,
+} from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -63,6 +69,31 @@ export default async function ContactPage({
           <ContactForm defaultSubject={defaultSubject} defaultMessage={defaultMessage} priceRequest={priceRequest} />
         </div>
       </div>
+      <section aria-labelledby="find-us" className="mt-16">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 id="find-us" className="text-xl font-semibold text-ink-900">
+            Find us
+          </h2>
+          <a
+            href={SITE_MAP_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-brand-600 hover:underline"
+          >
+            Open in Google Maps
+          </a>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-[var(--radius-card)] border border-ink-100 shadow-[var(--shadow-card)]">
+          <iframe
+            src={SITE_MAP_EMBED_URL}
+            title="Guru Ganesh Graphics on Google Maps"
+            className="block h-80 w-full border-0 sm:h-96"
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        </div>
+      </section>
     </Container>
   );
 }
