@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ContactForm } from "@/components/sections/contact-form";
+import { FollowUs } from "@/components/sections/follow-us";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import {
@@ -94,6 +95,8 @@ export default async function ContactPage({
           />
         </div>
       </section>
+
+      <FollowUs />
     </Container>
   );
 }
